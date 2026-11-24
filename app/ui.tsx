@@ -151,12 +151,14 @@ export async function asMp4(file: File, onProgress?: (percent: number) => void) 
   const failed = "This video could not be converted on this device. Export it as an MP4 under 40 MB and try again.";
   const { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Mp4OutputFormat, Output, Quality } =
     await import("mediabunny");
+  // The reason in brackets lets a screenshot of the error say what the device could not do.
+  const fail = (reason: string) => new Error(`${failed} (${reason})`);
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
   try {
     const track = await input.getPrimaryVideoTrack();
-    if (!track) throw new Error(failed);
-    // Bitrate that lands under the upload limit with 10% headroom after 128 kbps audio.
-    const bitrate = Math.min(6e6, (videoLimit * 8 * 0.9) / (await input.computeDuration()) - 128e3);
+    if (!track) throw fail("no video track");
+    // Bitrate that lands under the upload limit with 10% headroom after up to 256 kbps copied audio.
+    const bitrate = Math.min(6e6, (videoLimit * 8 * 0.9) / (await input.computeDuration()) - 256e3);
     if (bitrate < 1e6) throw new Error("This video is too long to upload. Trim it to under 4 minutes and try again.");
     const scale = Math.min(1, 1920 / Math.max(track.displayWidth, track.displayHeight));
     const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
@@ -170,17 +172,21 @@ export async function asMp4(file: File, onProgress?: (percent: number) => void) 
         fit: "contain",
         quality: new Quality({ bitrate }),
       },
-      audio: { codec: "aac", quality: new Quality({ bitrate: 128e3 }) },
+      // No bitrate: AAC audio (every iPhone video) is copied as is, since many iPhones lack WebCodecs audio encoding.
+      audio: { codec: "aac" },
     });
     // Extra audio tracks may drop; a missing video or main audio track may not.
-    if (!conversion.isValid || conversion.discardedTracks.some((d) => !d.reason.startsWith("max_track_count")))
-      throw new Error(failed);
+    const dropped = conversion.discardedTracks.filter((d) => !d.reason.startsWith("max_track_count"));
+    if (!conversion.isValid || dropped.length)
+      throw fail(dropped.map((d) => `${d.track.type} ${d.reason}`).join(", ") || "no usable tracks");
     conversion.onProgress = (progress) => onProgress?.(Math.round(progress * 100));
     await conversion.execute();
     return new File([output.target.buffer!], file.name.replace(/\.[^.]*$/, "") + ".mp4", { type: "video/mp4" });
   } catch (error) {
     // Keep this function's own messages; decoder and encoder errors mean the device cannot convert it.
-    throw error instanceof Error && error.message.startsWith("This video") ? error : new Error(failed);
+    if (error instanceof Error && error.message.startsWith("This video")) throw error;
+    console.error("Video conversion failed", error);
+    throw fail(error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 160) : "unknown error");
   } finally {
     input.dispose();
   }
