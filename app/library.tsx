@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { allowedTypes, type Asset, type Platform, type Project } from "@/lib/model";
-import { api, asJpeg, Field, Icon, localInput, Media, message, PlatformMark } from "./ui";
+import { api, Field, forPosting, Icon, localInput, Media, mediaAccept, message, PlatformMark, uploadMedia, UploadStatus } from "./ui";
 
 export function Library({
   project,
@@ -13,6 +13,7 @@ export function Library({
   navigate: (view: "compose" | "channels") => void;
 }) {
   const [busy, setBusy] = useState("");
+  const [percent, setPercent] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   // Brand PDFs live in the same asset list but are not postable media.
@@ -27,6 +28,7 @@ export function Library({
       setError(message(err));
     } finally {
       setBusy("");
+      setPercent(null);
     }
   }
   function replace(asset: Asset) {
@@ -66,12 +68,12 @@ export function Library({
       <div className="form-panel">
         <div className="upload">
           <Icon name="upload" size={23} />
-          <span>{busy === "Uploading…" ? busy : "Upload photos or a video"}</span>
+          <UploadStatus busy={busy} percent={percent} idle="Upload photos or a video" />
           <small>Up to 10 photos (8 MB each) or 1 video (40 MB) at a time</small>
           <input
             aria-label="Upload media to library"
             type="file"
-            accept={allowedTypes.join(",")}
+            accept={mediaAccept}
             multiple
             disabled={!!busy}
             onChange={(e) => {
@@ -79,10 +81,13 @@ export function Library({
               e.target.value = "";
               if (!files.length) return;
               void work("Uploading…", async () => {
-                const form = new FormData();
-                form.set("project", project.id);
-                for (const f of await Promise.all(files.map(asJpeg))) form.append("files", f);
-                const { assets: added }: { assets: Asset[] } = await api(form);
+                const ready = await forPosting(files, (p) => {
+                  setBusy("Converting video…");
+                  setPercent(p);
+                });
+                setBusy("Uploading…");
+                setPercent(0);
+                const added = await uploadMedia(project.id, ready, {}, setPercent);
                 update({ ...project, assets: [...project.assets, ...added] });
               });
             }}

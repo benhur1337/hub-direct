@@ -177,6 +177,7 @@ details .field { margin-top: 15px; }
 .draft-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(19px, 4vw, 76px); }
 .upload { display: grid; place-items: center; position: relative; gap: 5px; border: 1px dashed #838380; padding: 19px; }
 .upload input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.upload progress { width: 100%; max-width: 320px; height: 5px; accent-color: var(--color-ink); }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(100px,1fr)); gap: 8px; padding: 0; list-style: none; }
 .media-grid li { min-width: 0; }
 .media-grid img, .media-grid video { width: 100%; aspect-ratio: 4/3; object-fit: contain; background: var(--color-parchment); }

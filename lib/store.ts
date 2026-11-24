@@ -184,7 +184,7 @@ async function legacyAsset(project: Project, asset: Asset) {
 export async function addMedia(
   owner: string,
   id: string,
-  assets: { asset: Asset; data: Buffer }[],
+  assets: { asset: Asset; data?: Buffer }[],
   existing: unknown,
   brandUpload = false,
 ) {
@@ -198,7 +198,8 @@ export async function addMedia(
   const uploaded: string[] = [];
   try {
     for (const { asset, data } of assets) {
-      await putFile(id, asset, data);
+      // Without data, the browser already uploaded the file to R2.
+      if (data) await putFile(id, asset, data);
       uploaded.push(asset.id);
     }
     await withProject(owner, id, (current) => {

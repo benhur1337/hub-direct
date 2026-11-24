@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Asset, Platform } from "@/lib/model";
+import { videoLimit, type Asset, type Platform } from "@/lib/model";
 
 const paths = {
   arrow: "M4 12h15m-6-6 6 6-6 6",
@@ -143,6 +143,64 @@ export async function asJpeg(file: File) {
     return file; // Too large to decode here: upload the original, which still works everywhere except Instagram.
   }
 }
+// The pickers take any video; asMp4 turns it into something every channel accepts.
+export const mediaAccept = "image/jpeg,image/png,image/webp,video/*";
+// iPhone MOV, WebM and videos over 40 MB become H.264 MP4 (Instagram rejects WebM and frames over 1920 px).
+export async function asMp4(file: File, onProgress?: (percent: number) => void) {
+  if (!file.type.startsWith("video/") || (file.type === "video/mp4" && file.size <= videoLimit)) return file;
+  const failed = "This video could not be converted on this device. Export it as an MP4 under 40 MB and try again.";
+  const { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Mp4OutputFormat, Output, Quality } =
+    await import("mediabunny");
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+  try {
+    const track = await input.getPrimaryVideoTrack();
+    if (!track) throw new Error(failed);
+    // Bitrate that lands under the upload limit with 10% headroom after 128 kbps audio.
+    const bitrate = Math.min(6e6, (videoLimit * 8 * 0.9) / (await input.computeDuration()) - 128e3);
+    if (bitrate < 1e6) throw new Error("This video is too long to upload. Trim it to under 4 minutes and try again.");
+    const scale = Math.min(1, 1920 / Math.max(track.displayWidth, track.displayHeight));
+    const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
+    const conversion = await Conversion.init({
+      input,
+      output,
+      video: {
+        codec: "avc",
+        width: Math.round((track.displayWidth * scale) / 2) * 2,
+        height: Math.round((track.displayHeight * scale) / 2) * 2,
+        fit: "contain",
+        quality: new Quality({ bitrate }),
+      },
+      audio: { codec: "aac", quality: new Quality({ bitrate: 128e3 }) },
+    });
+    // Extra audio tracks may drop; a missing video or main audio track may not.
+    if (!conversion.isValid || conversion.discardedTracks.some((d) => !d.reason.startsWith("max_track_count")))
+      throw new Error(failed);
+    conversion.onProgress = (progress) => onProgress?.(Math.round(progress * 100));
+    await conversion.execute();
+    return new File([output.target.buffer!], file.name.replace(/\.[^.]*$/, "") + ".mp4", { type: "video/mp4" });
+  } catch (error) {
+    // Keep this function's own messages; decoder and encoder errors mean the device cannot convert it.
+    throw error instanceof Error && error.message.startsWith("This video") ? error : new Error(failed);
+  } finally {
+    input.dispose();
+  }
+}
+/** Post media as every channel accepts it, reporting video conversion progress. */
+export function forPosting(files: File[], onConvert: (percent: number) => void) {
+  return Promise.all(files.map(async (f) => asMp4(await asJpeg(f), onConvert)));
+}
+/** Upload box label and bar while media converts or uploads. */
+export function UploadStatus({ busy, percent, idle }: { busy: string; percent: number | null; idle: string }) {
+  if (percent === null) return <span>{busy === "Uploading…" ? busy : idle}</span>;
+  return (
+    <>
+      <span>
+        {busy} {percent}%
+      </span>
+      <progress value={percent} max={100} aria-label={busy} />
+    </>
+  );
+}
 export function prettyTime(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -154,17 +212,53 @@ export function localInput(date: Date) {
     .toISOString()
     .slice(0, 16);
 }
-export async function api(body: Record<string, unknown> | FormData) {
-  const form = body instanceof FormData;
+export async function api(body: Record<string, unknown>) {
   const response = await fetch("/api/workspace", {
     method: "POST",
-    headers: form ? undefined : { "Content-Type": "application/json" },
-    body: form ? body : JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok)
     throw new Error(data.error || "The request failed. Try again.");
   return data;
+}
+// Files go straight to R2 through signed links: Vercel rejects function requests over 4.5 MB.
+export async function uploadMedia(
+  project: string,
+  files: File[],
+  extra: Record<string, unknown> = {},
+  onProgress?: (percent: number) => void,
+) {
+  const { uploads }: { uploads: { asset: Asset; url: string }[] } = await api({
+    action: "upload",
+    project,
+    ...extra,
+    files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+  });
+  const total = files.reduce((sum, f) => sum + f.size, 0);
+  const sent = files.map(() => 0);
+  // XMLHttpRequest, not fetch: only it reports upload progress.
+  await Promise.all(
+    uploads.map(
+      ({ asset, url }, i) =>
+        new Promise<void>((resolve, reject) => {
+          const failed = () => reject(new Error("The upload did not finish. Check your connection and try again."));
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", url);
+          xhr.setRequestHeader("Content-Type", asset.type);
+          xhr.upload.onprogress = (e) => {
+            sent[i] = e.loaded;
+            onProgress?.(Math.round((sent.reduce((a, b) => a + b, 0) / total) * 100));
+          };
+          xhr.onload = () => (xhr.status < 300 ? resolve() : failed());
+          xhr.onerror = xhr.onabort = xhr.ontimeout = failed;
+          xhr.send(files[i]);
+        }),
+    ),
+  );
+  const { assets }: { assets: Asset[] } = await api({ action: "attach", project, ...extra, assets: uploads.map((u) => u.asset) });
+  return assets;
 }
 export function message(error: unknown) {
   return error instanceof TypeError

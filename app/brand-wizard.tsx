@@ -10,8 +10,8 @@ import {
   type Answer,
   type BrandProfile,
 } from "@/lib/brand-profile";
-import { brandAssetTypes, photoLimit, videoLimit, type Asset, type Project } from "@/lib/model";
-import { api, Icon, message } from "./ui";
+import { brandAssetTypes, photoLimit, videoLimit, type Project } from "@/lib/model";
+import { api, Icon, message, uploadMedia } from "./ui";
 import { BrandInput } from "./brand-input";
 import "./brand-wizard.css";
 
@@ -70,11 +70,7 @@ export function BrandWizard({
         if (!file.size || file.size > (file.type.startsWith("video/") ? videoLimit : photoLimit))
           throw new Error("Choose non-empty images or PDFs up to 8 MB, or videos up to 40 MB.");
       }
-      const data = new FormData();
-      data.set("project", project.id);
-      data.set("purpose", "brand");
-      files.forEach((file) => data.append("files", file));
-      const { assets }: { assets: Asset[] } = await api(data);
+      const assets = await uploadMedia(project.id, files, { purpose: "brand" });
       update({ ...project, assets: [...project.assets, ...assets] });
       change(f, f.kind === "logo" ? assets[0].id : [...ids, ...assets.map((a) => a.id)]);
       setStatus("Files uploaded. Save your draft or finish your profile to keep this selection.");

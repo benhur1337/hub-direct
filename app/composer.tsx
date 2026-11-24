@@ -2,22 +2,23 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
-  allowedTypes,
   platforms,
   type Platform,
   type Project,
-  type Asset,
 } from "@/lib/model";
 import {
   api,
-  asJpeg,
+  forPosting,
   Field,
   Icon,
   localInput,
+  mediaAccept,
   Media,
   message,
   PlatformMark,
   prettyTime,
+  uploadMedia,
+  UploadStatus,
 } from "./ui";
 
 type Draft = {
@@ -67,6 +68,7 @@ export function Composer({
   const [draft, setDraft] = useState(() => readDraft(project));
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState("");
+  const [percent, setPercent] = useState<number | null>(null);
   const [error, setError] = useState("");
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   useEffect(() => {
@@ -90,6 +92,7 @@ export function Composer({
       setError(message(err));
     } finally {
       setBusy("");
+      setPercent(null);
     }
   }
   function move(index: number, offset: number) {
@@ -201,11 +204,7 @@ export function Composer({
                   </span>
                   <div className="upload">
                     <Icon name="upload" size={23} />
-                    <span>
-                      {busy === "Uploading…"
-                        ? busy
-                        : "Choose photos or a video"}
-                    </span>
+                    <UploadStatus busy={busy} percent={percent} idle="Choose photos or a video" />
                     <small>
                       {assets.length
                         ? assets.length + " attached · add more, up to 10 photos or 1 video"
@@ -214,22 +213,25 @@ export function Composer({
                     <input
                       aria-label="Upload media"
                       type="file"
-                      accept={allowedTypes.join(",")}
+                      accept={mediaAccept}
                       multiple
                       onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         e.target.value = "";
                         if (!files.length) return;
                         void work("Uploading…", async () => {
-                          const form = new FormData();
-                          form.set("project", project.id);
-                          draft.media.forEach((id) =>
-                            form.append("existing", id),
+                          const ready = await forPosting(files, (p) => {
+                            setBusy("Converting video…");
+                            setPercent(p);
+                          });
+                          setBusy("Uploading…");
+                          setPercent(0);
+                          const added = await uploadMedia(
+                            project.id,
+                            ready,
+                            { existing: draft.media },
+                            setPercent,
                           );
-                          for (const f of await Promise.all(files.map(asJpeg)))
-                            form.append("files", f);
-                          const { assets: added }: { assets: Asset[] } =
-                            await api(form);
                           update({
                             ...project,
                             assets: [...project.assets, ...added],
