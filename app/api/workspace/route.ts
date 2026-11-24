@@ -25,7 +25,7 @@ import {
   type Platform,
   type Project,
 } from "@/lib/model";
-import { R2ConfigurationError, signedFileUrl } from "@/lib/r2";
+import { R2ConfigurationError, signedFileUrl, uploadedFile, uploadUrl } from "@/lib/r2";
 import { brandContext, BrandInputError } from "@/lib/brand-profile";
 import { shareTarget } from "@/lib/publish";
 import { newSession, sessionAge, sessionCookie, sessionUser, signIn, signUp } from "@/lib/auth";
@@ -153,51 +153,61 @@ async function limitedBody(req: NextRequest, limit: number) {
   }
   return Buffer.concat(chunks);
 }
-async function upload(user: string, req: NextRequest, contentType: string) {
-  const bytes = await limitedBody(req, 10 * photoLimit + 128 * 1024);
-  let form: FormData;
-  try {
-    form = await new Response(new Uint8Array(bytes), {
-      headers: { "content-type": contentType },
-    }).formData();
-  } catch {
-    throw new Problem("Upload could not be read. Select the files again.");
-  }
-  const files = form.getAll("files");
-  const brandUpload = form.get("purpose") === "brand";
-  const types = brandUpload ? brandAssetTypes : allowedTypes;
+// Files go straight from the browser to R2: Vercel rejects function requests over 4.5 MB.
+async function upload(user: string, body: Record<string, unknown>) {
+  const project = await projectById(user, String(body.project));
+  const types = body.purpose === "brand" ? brandAssetTypes : allowedTypes;
+  const files = body.files;
   check(
-    files.length && files.length <= 10,
+    Array.isArray(files) && files.length && files.length <= 10,
     "Choose up to ten photos or one video.",
   );
-  const assets = await Promise.all(
+  const uploads = await Promise.all(
     files.map(async (file) => {
+      const type = String(file?.type);
+      const size = Number(file?.size);
       check(
-        file instanceof File && types.includes(file.type),
-        brandUpload ? "Choose a JPEG, PNG, WebP, MP4, WebM, or PDF file." : "Choose JPEG, PNG, WebP, MP4, or WebM files.",
+        types.includes(type),
+        body.purpose === "brand" ? "Choose a JPEG, PNG, WebP, MP4, WebM, or PDF file." : "Choose JPEG, PNG, WebP, MP4, or WebM files.",
       );
       check(
-        file.size > 0 &&
-          file.size <=
-            (file.type.startsWith("video/") ? videoLimit : photoLimit),
+        Number.isInteger(size) && size > 0 && size <= (type.startsWith("video/") ? videoLimit : photoLimit),
         "Use photos up to 8 MB or a video up to 40 MB.",
       );
-      const data = Buffer.from(await file.arrayBuffer());
-      check(
-        sniff(data) === file.type,
-        "The file contents do not match its type. Export the media again.",
-      );
-      return {
-        asset: {
-          id: randomUUID(),
-          name: file.name.slice(0, 255),
-          type: file.type,
-        },
-        data,
-      };
+      const asset = { id: randomUUID(), name: String(file.name).slice(0, 255), type };
+      return { asset, url: await uploadUrl(project.id, asset, size) };
     }),
   );
-  await addMedia(user, String(form.get("project")), assets, form.getAll("existing"), brandUpload);
+  return NextResponse.json({ uploads });
+}
+async function attach(user: string, body: Record<string, unknown>) {
+  const projectId = String(body.project);
+  const brandUpload = body.purpose === "brand";
+  const types = brandUpload ? brandAssetTypes : allowedTypes;
+  const list = body.assets;
+  check(Array.isArray(list) && list.length && list.length <= 10, "Choose up to ten photos or one video.");
+  await projectById(user, projectId);
+  const assets = await Promise.all(
+    list.map(async (item) => {
+      const id = String(item?.id);
+      check(/^[0-9a-f-]{36}$/.test(id), "Upload the files again.");
+      const file = await uploadedFile(projectId, id);
+      check(file, "The upload did not finish. Try again.");
+      const type = String(file.type);
+      check(
+        types.includes(type) &&
+          file.size > 0 &&
+          file.size <= (type.startsWith("video/") ? videoLimit : photoLimit),
+        "Use photos up to 8 MB or a video up to 40 MB.",
+      );
+      check(
+        sniff(file.head) === type,
+        "The file contents do not match its type. Export the media again.",
+      );
+      return { asset: { id, name: String(item.name).slice(0, 255), type } };
+    }),
+  );
+  await addMedia(user, projectId, assets, body.existing ?? [], brandUpload);
   return NextResponse.json({ assets: assets.map((item) => item.asset) });
 }
 async function generate(user: string, body: Record<string, unknown>) {
@@ -294,12 +304,9 @@ export async function POST(req: NextRequest) {
       403,
     );
     const contentType = req.headers.get("content-type") || "";
-    if (contentType.startsWith("multipart/form-data")) {
-      return await upload(requireUser(req), req, contentType);
-    }
     check(
       contentType.startsWith("application/json"),
-      "Send a JSON request or media upload.",
+      "Send a JSON request.",
       415,
     );
     const bytes = await limitedBody(req, 160000);
@@ -333,6 +340,8 @@ export async function POST(req: NextRequest) {
     const user = requireUser(req);
     if (body.action === "generate") return await generate(user, body);
     if (body.action === "describe") return await describe(user, body);
+    if (body.action === "upload") return await upload(user, body);
+    if (body.action === "attach") return await attach(user, body);
     if (body.action === "delete") {
       await deleteProject(user, body.project);
       return NextResponse.json({ ok: true });

@@ -97,6 +97,39 @@ export async function signedFileUrl(projectId: string, asset: Asset) {
   );
 }
 
+/** A ten-minute link the browser PUTs one file to; the signature pins its type and size. */
+export function uploadUrl(projectId: string, asset: Asset, size: number) {
+  const { client, bucket } = storage();
+  return getSignedUrl(
+    client,
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: objectKey(projectId, asset.id),
+      ContentType: asset.type,
+      ContentLength: size,
+    }),
+    { expiresIn: 600, signableHeaders: new Set(["content-type"]) },
+  );
+}
+
+/** Type, size and first bytes of a browser upload, or undefined when nothing was uploaded. */
+export async function uploadedFile(projectId: string, assetId: string) {
+  const { client, bucket } = storage();
+  try {
+    const result = await client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: objectKey(projectId, assetId), Range: "bytes=0-255" }),
+    );
+    return {
+      type: result.ContentType,
+      size: Number(result.ContentRange?.split("/")[1]),
+      head: Buffer.from(await result.Body!.transformToByteArray()),
+    };
+  } catch (error) {
+    if (error instanceof S3ServiceException && error.name === "NoSuchKey") return;
+    throw error;
+  }
+}
+
 export async function deleteFile(projectId: string, assetId: string) {
   const { client, bucket } = storage();
   await client.send(
