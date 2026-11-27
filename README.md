@@ -35,6 +35,12 @@ ANTHROPIC_API_KEY=your-api-key
 
 Open **Brand voice** in a project to build its profile. The eight sections can be skipped and revisited. **Save draft** remembers the current step. **Save profile** on the review screen makes the reviewed answers available to caption generation. Existing Markdown appears under **Audience & communication → Advanced options → Existing voice notes**.
 
+**Editorial notes** are feedback for future captions ("great hook", "fewer emoji"). Add one when you confirm a post, from any post in the schedule (before or after it publishes, optionally about one channel's caption), or under **Brand voice → Editorial notes**, where you can also remove them. Notes are stored with the brand voice (`projects.editorial`, up to 40 of 500 characters) and every caption request sends all of them, oldest first, so later notes win.
+
+The caption prompt is laid out for the prompt cache, most stable first: the fixed system prompt, the brand context (cache breakpoint 1), the editorial notes (breakpoint 2), then the platform, brief and media description. Notes are the same for every platform (each note names the platform it is about), so adding one only rewrites the notes block and the brand context stays cached; the second breakpoint also caches the pair when the brand context alone is under the model's 512-token minimum. `scripts/check-brand.ts` asserts this layout. Bulk generation runs the first request alone to write the cache, then the rest four at a time to read it. `response.usage` is logged as "Caption usage" for checking `cache_read_input_tokens`.
+
+**Plan week** shows the next seven days and lets you queue posts in bulk. Upload a batch of up to 50 photos and videos; each file becomes a queued post on the next day with nothing queued or scheduled, at the default time. Write a brief (and media description) on each card, choose **Generate missing captions**, then **Schedule ready posts** and confirm the list of times and destinations. Each post is scheduled on its own, so one failure leaves the others scheduled and shows what to fix. The queue is kept per project in the current browser tab, like composer drafts. The **Library** accepts the same batches (sent ten files per request); batch uploads skip the one-video-per-post rule, which still applies when a post is scheduled.
+
 When a post has media, the composer asks for a short description of it; generated captions describe only what that description states. Generating a caption sends the completed brand context, post brief, media description, and destination to Anthropic. Draft edits stay separate until submission. Without a completed profile, captions use the project's existing voice notes. You can also enter or edit captions manually.
 
 ## Storage and delivery
@@ -52,7 +58,7 @@ Use the S3 endpoint shown for your bucket. The workspace validates uploads befor
 
 For workspaces that already store files in Neon, run `npm run media:migrate`. It copies each attachment to R2, verifies its bytes, and preserves existing links and the database copy. You can rerun it after an interruption. Existing Neon attachments remain readable while configuring R2.
 
-The database schema lives in `lib/schema.ts`. After editing it, run `npm run db:generate`, review the generated SQL in `drizzle/`, then run `npm run db:migrate`.
+The database schema lives in `lib/schema.ts`. After editing it, run `npm run db:generate`, review the generated SQL in `drizzle/`, then run `npm run db:migrate`. On Vercel, every deployment applies pending migrations before building (the `vercel-build` script), using that environment's `DATABASE_URL_UNPOOLED` or `DATABASE_URL`; migrations only add, so the deployment still running keeps working. If a Build Command override is set in the Vercel project settings, it replaces this script. Previews that share the production database migrate it too.
 
 To migrate an existing file-backed workspace, stop its old server, configure R2, apply the database migration, and run `npm run db:import`. The importer reads `.hub-data/` or the directory specified by `HUB_DATA_DIR`. It copies and verifies files in R2 before committing their project metadata to Neon. It preserves original IDs and source files and skips existing projects on reruns.
 

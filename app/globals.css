@@ -246,3 +246,54 @@ details .field { margin-top: 15px; }
   .calendar.month .chip :is(.route-marks, .chip-brief) { display: none; }
   .calendar-nav h3 { flex-basis: 100%; margin: 8px 0 0; }
 }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Editorial notes */
+.desk > .editorial, .shell .editorial { margin-top: var(--section-gap); }
+.note-list { display: grid; gap: 0; padding: 0; margin: 19px 0 0; list-style: none; }
+.note { display: grid; gap: 5px; padding: 15px 0; border-top: 1px solid var(--color-ash); }
+.note > .text-button { justify-self: start; min-height: 32px; }
+.note-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; text-transform: uppercase; }
+.note-meta .platform-mark { width: 16px; height: 16px; }
+.note-caption { font-size: 13px; color: #4a4a48; border-left: 2px solid var(--color-ash); padding-left: 10px; overflow-wrap: anywhere; }
+.note-form > * + * { margin-top: 12px; }
+.note-scope { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+.note-scope select { width: auto; min-height: 40px; }
+.post-notes { border-top: 1px solid var(--color-ash); padding-top: 15px; }
+.post-notes .note-list { margin: 0 0 15px; }
+.post-notes .note:first-child { border-top: 0; padding-top: 0; }
+/* Week planner */
+.plan-tools > .plan-controls { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 15px 19px; }
+.plan-controls .field { width: min(100%, 200px); }
+.plan-controls > small { flex-basis: 100%; }
+.plan-confirm { display: grid; gap: 8px; padding: 0; margin: 15px 0 0; list-style: none; }
+.plan-confirm li { display: grid; grid-template-columns: minmax(0, 15em) auto minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.plan-confirm .route-marks { margin-left: 0; display: flex; }
+.plan-confirm time { font-variant-numeric: tabular-nums; }
+.plan-status { border-left: 3px solid var(--color-ash); padding: 8px 15px; }
+.plan-nav { margin-top: 32px; }
+.plan-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; padding: 0; margin: 0 0 32px; list-style: none; background: var(--color-ash); border: 1px solid var(--color-ash); }
+.plan-strip a { display: grid; gap: 4px; padding: 10px; min-height: 92px; background: var(--color-paper); border-radius: 0; }
+.plan-strip a:hover { background: #f5f4f0; text-decoration: none; }
+.plan-strip strong { font-size: 28px; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }
+.plan-day { padding-block: 19px; border-top: 1px solid var(--color-ash); }
+.plan-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 15px; }
+.plan-booked { display: grid; gap: 6px; padding: 0; margin: 0 0 15px; list-style: none; }
+.plan-booked li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px; background: var(--color-parchment); border-radius: 6px; font-size: 13px; }
+.plan-booked .route-marks { margin-left: 0; display: flex; }
+.plan-booked .platform-mark { width: 16px; height: 16px; }
+.plan-booked time { white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; }
+.plan-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 15px; padding: 0; margin: 0; list-style: none; }
+.plan-card { background: var(--color-paper); padding: 19px; min-width: 0; }
+.plan-card .draft-column > * + * { margin-top: 15px; }
+.plan-card .media-grid .text-button { min-height: 28px; font-size: 11px; overflow-wrap: anywhere; }
+.plan-add-media { position: relative; cursor: pointer; width: fit-content; }
+.plan-add-media:focus-within { outline: 2px solid var(--color-ink); outline-offset: 3px; }
+.plan-when { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px; }
+.plan-issue { display: block; color: #4a4a48; }
+.plan-empty { font-size: 15px; }
+@media (max-width: 760px) {
+  .plan-strip { grid-template-columns: repeat(7, minmax(44px, 1fr)); overflow-x: auto; }
+  .plan-strip a { padding: 6px; min-height: 72px; }
+  .plan-strip a small:last-child { display: none; }
+  .plan-confirm li { grid-template-columns: 1fr; }
+}

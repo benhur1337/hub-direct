@@ -20,6 +20,8 @@ const paths = {
   close: "m6 6 12 12M18 6 6 18",
   trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
   spark: "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z",
+  week: "M3 4h18v16H3ZM3 9h18M9 9v11m6-11v11",
+  note: "M5 3h10l4 4v14H5ZM14 3v5h5M8 13h8M8 17h5",
 };
 export function Icon({
   name,
@@ -265,6 +267,60 @@ export async function uploadMedia(
   );
   const { assets }: { assets: Asset[] } = await api({ action: "attach", project, ...extra, assets: uploads.map((u) => u.asset) });
   return assets;
+}
+/** Files per upload request; the server checks the same limit. */
+const uploadChunk = 10;
+/**
+ * Uploads any number of library files in groups of ten, converting each first. Each
+ * group is saved before the next starts, so a failure keeps everything already uploaded.
+ */
+export async function uploadBatch(
+  project: string,
+  files: File[],
+  onStatus: (label: string, percent: number | null) => void,
+  onAdded: (assets: Asset[]) => void,
+) {
+  let done = 0;
+  for (let start = 0; start < files.length; start += uploadChunk) {
+    const group = files.slice(start, start + uploadChunk);
+    const ready: File[] = [];
+    // One file at a time: several video conversions at once can exhaust a phone's memory.
+    for (const file of group)
+      ready.push(
+        await asMp4(await asJpeg(file), (p) =>
+          onStatus(`Converting video ${start + ready.length + 1} of ${files.length}…`, p),
+        ),
+      );
+    onStatus(`Uploading ${done + 1}–${done + group.length} of ${files.length}…`, 0);
+    try {
+      const added = await uploadMedia(project, ready, { purpose: "library" }, (p) =>
+        onStatus(`Uploading ${done + 1}–${done + group.length} of ${files.length}…`, p),
+      );
+      done += added.length;
+      onAdded(added);
+    } catch (error) {
+      if (!done) throw error;
+      throw new Error(`Uploaded ${done} of ${files.length} files. ${message(error)}`);
+    }
+  }
+}
+/**
+ * Runs caption requests so they share the prompt cache: the first one runs alone and
+ * writes the brand-context cache, then the rest read it, a few at a time. Parallel
+ * requests started before the first finishes would each pay to write the cache.
+ */
+export async function cachedBatch(jobs: (() => Promise<unknown>)[], limit = 4) {
+  if (!jobs.length) return [];
+  const results: PromiseSettledResult<unknown>[] = await Promise.allSettled([jobs[0]()]);
+  let next = 1;
+  async function worker() {
+    while (next < jobs.length) {
+      const index = next++;
+      [results[index]] = await Promise.allSettled([jobs[index]()]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, jobs.length - 1) }, worker));
+  return results;
 }
 export function message(error: unknown) {
   return error instanceof TypeError

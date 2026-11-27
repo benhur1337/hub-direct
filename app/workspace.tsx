@@ -17,18 +17,22 @@ import { BrandWizard } from "./brand-wizard";
 import { Composer } from "./composer";
 import { Schedule } from "./schedule";
 import { Library } from "./library";
+import { EditorialNotes } from "./editorial";
+import { Planner } from "./planner";
 
 type View =
   | "overview"
   | "create"
   | "schedule"
   | "compose"
+  | "plan"
   | "library"
   | "voice"
   | "channels";
 const tabs = [
   ["schedule", "Schedule", "calendar"],
   ["compose", "Compose", "compose"],
+  ["plan", "Plan week", "week"],
   ["library", "Library", "upload"],
   ["voice", "Brand voice", "voice"],
   ["channels", "Channels", "link"],
@@ -108,7 +112,7 @@ export function Desk({
     });
   }
   useEffect(() => {
-    if (!signedIn || (view !== "overview" && view !== "schedule")) return;
+    if (!signedIn || !["overview", "schedule", "plan"].includes(view)) return;
     let active = true;
     let loading = false;
     async function refresh() {
@@ -467,7 +471,13 @@ export function Desk({
                 </div>
               )}
               {view === "voice" && (
-                <BrandWizard key={id} project={current} update={update} />
+                <>
+                  <BrandWizard key={id} project={current} update={update} />
+                  <EditorialNotes key={"notes-" + id} project={current} update={update} />
+                </>
+              )}
+              {view === "plan" && (
+                <Planner key={id} project={current} update={update} navigate={go} />
               )}
               {view === "compose" && (
                 <Composer

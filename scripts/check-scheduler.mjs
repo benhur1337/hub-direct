@@ -30,6 +30,7 @@ const port = portFinder.address().port;
 await new Promise((resolve) => portFinder.close(resolve));
 const url = "http://127.0.0.1:" + port + "/api/workspace";
 const objects = new Map();
+const objectTypes = new Map();
 let rejectKeyAfter;
 const storage = createHttpServer(async (req, res) => {
   const key = new URL(req.url, "http://localhost").pathname;
@@ -47,13 +48,22 @@ const storage = createHttpServer(async (req, res) => {
     if (objects.has(key) && req.headers["if-none-match"] === "*")
       return fail(412, "PreconditionFailed");
     objects.set(key, Buffer.concat(chunks));
+    objectTypes.set(key, req.headers["content-type"]);
   } else if (req.method === "HEAD") {
     res.writeHead(objects.has(key) ? 200 : 404);
   } else if (req.method === "GET") {
     if (!objects.has(key)) return fail(404, "NoSuchKey");
-    const type = query.get("response-content-type");
+    const type = query.get("response-content-type") || objectTypes.get(key);
     if (type) res.setHeader("Content-Type", type);
-    return res.end(objects.get(key));
+    const body = objects.get(key);
+    // Attaching an upload reads only its first bytes, as R2 does for a Range request.
+    const range = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || "");
+    if (range) {
+      const end = Math.min(Number(range[2]), body.length - 1);
+      res.writeHead(206, { "Content-Range": `bytes ${range[1]}-${end}/${body.length}` });
+      return res.end(body.subarray(Number(range[1]), end + 1));
+    }
+    return res.end(body);
   } else if (req.method === "DELETE") {
     objects.delete(key);
   } else return fail(405, "MethodNotAllowed");
@@ -165,13 +175,36 @@ async function request(body, status = 200) {
 }
 const action = (project, action, fields = {}, status = 200) =>
   request({ project, action, ...fields }, status);
-function upload(project, files, existing = []) {
-  const data = new FormData();
-  data.set("project", project);
-  for (const id of existing) data.append("existing", id);
-  for (const [name, type, bytes] of files)
-    data.append("files", new Blob([bytes], { type }), name);
-  return data;
+async function post(body) {
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { ...(cookie ? { cookie } : {}), "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: resp.status, reply: await resp.json() };
+}
+/**
+ * The browser's upload: ask for signed links, PUT each file to storage, then attach.
+ * `status` is the first non-200 status expected from either workspace request.
+ */
+async function upload(project, files, { existing = [], purpose } = {}, status = 200) {
+  const extra = { project, existing, ...(purpose ? { purpose } : {}) };
+  const signed = await post({
+    action: "upload",
+    ...extra,
+    files: files.map(([name, type, bytes]) => ({ name, type, size: Buffer.byteLength(bytes) })),
+  });
+  if (signed.status !== 200) {
+    assert.equal(signed.status, status, JSON.stringify(signed.reply));
+    return signed.reply;
+  }
+  for (const [i, { url: link }] of signed.reply.uploads.entries()) {
+    const put = await fetch(link, { method: "PUT", headers: { "content-type": files[i][1] }, body: files[i][2] });
+    if (!put.ok) return { putFailed: true };
+  }
+  const attached = await post({ action: "attach", ...extra, assets: signed.reply.uploads.map((u) => u.asset) });
+  assert.equal(attached.status, status, JSON.stringify(attached.reply));
+  return attached.reply;
 }
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aQxkAAAAASUVORK5CYII=",
@@ -223,45 +256,38 @@ try {
   );
   await action(b.id, "connect", { platform: "TikTok" });
   rejectKeyAfter = 1;
-  await request(
-    upload(a.id, [
-      ["ok.png", "image/png", png],
-      ["fail.png", "image/png", png],
-    ]),
-    500,
+  assert(
+    (
+      await upload(a.id, [
+        ["ok.png", "image/png", png],
+        ["fail.png", "image/png", png],
+      ])
+    ).putFailed,
   );
-  assert.equal(objects.size, 0);
+  // The browser never attaches a half-finished upload; its stored half is an orphan.
+  objects.clear();
   assert.deepEqual(
     (await pool.query("SELECT assets FROM projects WHERE id = $1", [a.id]))
       .rows[0].assets,
     [],
   );
   rejectKeyAfter = undefined;
-  const { assets } = await request(
-    upload(a.id, [
-      ["first.png", "image/png", png],
-      ["second.png", "image/png", png],
-    ]),
-  );
-  await request(upload(a.id, [["wrong.png", "image/png", "not a photo"]]), 400);
-  await request(
-    upload(
-      a.id,
-      Array.from({ length: 11 }, () => ["many.png", "image/png", png]),
-    ),
-    400,
-  );
-  await request(
-    upload(a.id, [["big.png", "image/png", Buffer.alloc(8 * 1024 * 1024 + 1)]]),
-    400,
-  );
+  const { assets } = await upload(a.id, [
+    ["first.png", "image/png", png],
+    ["second.png", "image/png", png],
+  ]);
+  await upload(a.id, [["wrong.png", "image/png", "not a photo"]], {}, 400);
+  for (const key of objects.keys()) if (!key.endsWith(assets[0].id) && !key.endsWith(assets[1].id)) objects.delete(key);
+  await upload(a.id, Array.from({ length: 11 }, () => ["many.png", "image/png", png]), {}, 400);
+  await upload(a.id, [["big.png", "image/png", Buffer.alloc(8 * 1024 * 1024 + 1)]], {}, 400);
   const video = [
     "clip.webm",
     "video/webm",
     Buffer.concat([Buffer.from("1a45dfa3", "hex"), Buffer.from("webm")]),
   ];
-  await request(upload(a.id, [video], [assets[0].id]), 400);
-  const clip = (await request(upload(b.id, [video]))).assets[0];
+  await upload(a.id, [video], { existing: [assets[0].id] }, 400);
+  for (const key of objects.keys()) if (!key.endsWith(assets[0].id) && !key.endsWith(assets[1].id)) objects.delete(key);
+  const clip = (await upload(b.id, [video])).assets[0];
   assert.equal(objects.size, 3);
   assert.equal((await pool.query("SELECT id FROM media")).rowCount, 0);
   const key = `/test/projects/${a.id}/media/${assets[0].id}`;
@@ -334,6 +360,33 @@ try {
   await action(a.id, "cancel", { postId: canceled });
   const due = new Date(Date.now() + 2000).toISOString();
   await action(a.id, "reschedule", { postId: fields.draftId, when: due });
+  // Library batches skip the one-post media rules: two videos and a photo together.
+  const batch = await upload(a.id, [video, video, ["third.png", "image/png", png]], { purpose: "library" });
+  assert.equal(batch.assets.length, 3);
+  await upload(a.id, [video, video], {}, 400);
+  // Editorial notes are stored with the brand voice and can point at a post and channel.
+  const note = (fields, status) => action(a.id, "note", fields, status);
+  await note({ text: "No ID" }, 400);
+  const general = { noteId: randomUUID(), text: "Fewer emoji." };
+  await note(general);
+  assert.equal((await note(general)).project.editorial.length, 1);
+  await note({ noteId: randomUUID(), text: "x".repeat(501) }, 400);
+  await note({ noteId: randomUUID(), text: "Lost", postId: randomUUID() }, 404);
+  await note({ noteId: randomUUID(), text: "Wrong channel", postId: fields.draftId, platform: "TikTok" }, 400);
+  const about = (await note({ noteId: randomUUID(), text: "Great hook.", postId: fields.draftId, platform: "Instagram" })).project
+    .editorial[1];
+  assert.deepEqual([about.postId, about.platform, about.caption], [fields.draftId, "Instagram", captions.Instagram]);
+  const noted = { ...fields, draftId: randomUUID(), note: "Lead with the date." };
+  await action(a.id, "schedule", noted);
+  const afterRetry = (await action(a.id, "schedule", noted)).project.editorial;
+  assert.deepEqual(afterRetry.map((n) => n.text), ["Fewer emoji.", "Great hook.", "Lead with the date."]);
+  assert.equal(afterRetry[2].postId, noted.draftId);
+  await action(a.id, "cancel", { postId: noted.draftId });
+  const removable = randomUUID();
+  await note({ noteId: removable, text: "Temporary" });
+  assert.equal((await action(a.id, "unnote", { noteId: removable })).project.editorial.length, 3);
+  for (let i = 3; i < 40; i++) await note({ noteId: randomUUID(), text: "Note " + i });
+  assert.match((await note({ noteId: randomUUID(), text: "One too many" }, 400)).error, /40/);
   await stop();
   await delay(Math.max(0, Date.parse(due) - Date.now() + 50));
   await start();
@@ -348,7 +401,9 @@ try {
   assert.match(second.voice, /Bright/);
   assert.deepEqual(first.channels.sort(), ["Facebook", "Instagram"]);
   assert.deepEqual(second.channels, ["TikTok"]);
-  assert.equal(first.posts.length, 2);
+  assert.equal(first.posts.length, 3);
+  assert.equal(first.editorial.length, 40);
+  assert.equal(first.editorial[1].caption, captions.Instagram);
   assert.equal(second.posts.length, 0);
   assert.deepEqual(
     second.assets.map((a) => a.id),
@@ -401,9 +456,7 @@ try {
   const submit = { ...draft, status: "completed", revision: 1, step: 8 };
   await brand({ ...submit, profile: {} }, 400);
   await brand({ ...submit, profile: { ...draft.profile, visual_identity: { assets: [clip.id] } } }, 400);
-  const guide = upload(a.id, [["Guide.pdf", "application/pdf", "%PDF-1.7\n"]]);
-  guide.set("purpose", "brand");
-  const guideId = (await request(guide)).assets[0].id;
+  const guideId = (await upload(a.id, [["Guide.pdf", "application/pdf", "%PDF-1.7\n"]], { purpose: "brand" })).assets[0].id;
   await brand({ ...submit, profile: { ...draft.profile, visual_identity: { logo: guideId } } }, 400);
   const profile = { ...draft.profile, visual_identity: { logo: assets[0].id, assets: [guideId] }, approval_rules: { rules: "Confirm before naming customers." } };
   const completed = (await brand({ ...submit, profile })).project;
@@ -445,8 +498,8 @@ try {
   const lantern = JSON.parse(listed).projects.find((p) => p.id === c.id);
   assert.deepEqual(lantern.linked, { Facebook: "Lantern Page", Instagram: "@lantern" });
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
-  const [photo] = (await request(upload(c.id, [["shot.jpg", "image/jpeg", jpeg]]))).assets;
-  const [flat] = (await request(upload(c.id, [["flat.png", "image/png", png]]))).assets;
+  const [photo] = (await upload(c.id, [["shot.jpg", "image/jpeg", jpeg]])).assets;
+  const [flat] = (await upload(c.id, [["flat.png", "image/png", png]])).assets;
   const newPost = (fields) => ({ draftId: randomUUID(), brief: "Lanterns", when: new Date(Date.now() + 1500).toISOString(), ...fields });
   assert.match(
     (await action(c.id, "schedule", newPost({ media: [flat.id], captions: { Instagram: "Glow" } }), 400)).error,

@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:import": "tsx scripts/import-workspace.ts",
-    "media:migrate": "tsx scripts/migrate-media.ts"
+    "media:migrate": "tsx scripts/migrate-media.ts",
+    "vercel-build": "drizzle-kit migrate && next build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.12.0",

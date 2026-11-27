@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
+  noteLength,
   platforms,
   type Platform,
   type Project,
 } from "@/lib/model";
 import {
   api,
+  cachedBatch,
   forPosting,
   Field,
   Icon,
@@ -29,6 +31,8 @@ type Draft = {
   selected: Platform[];
   captions: Partial<Record<Platform, string>>;
   when: string;
+  /** Editorial feedback saved with the brand voice when the post is scheduled. */
+  note?: string;
 };
 function readDraft(project: Project): Draft {
   try {
@@ -166,6 +170,7 @@ export function Composer({
               media: draft.media,
               captions,
               when,
+              note: draft.note?.trim() || undefined,
             });
             update(data.project);
             try {
@@ -352,12 +357,7 @@ export function Composer({
                           captions: { ...prev.captions, [p]: data.caption },
                         }));
                       };
-                    // The first request writes the brand-context cache; parallel ones would all miss it.
-                    const [first, ...rest] = draft.selected;
-                    const results = [
-                      ...(await Promise.allSettled([one(first)])),
-                      ...(await Promise.allSettled(rest.map(one))),
-                    ];
+                    const results = await cachedBatch(draft.selected.map((p) => () => one(p)));
                     const failed = results.find((r) => r.status === "rejected");
                     if (failed) throw failed.reason;
                   })
@@ -429,6 +429,18 @@ export function Composer({
           </div>
         </fieldset>
         <div className="draft-controls">
+          {review && (
+            <Field label="Editorial note (optional)">
+              <textarea
+                maxLength={noteLength}
+                disabled={!!busy}
+                value={draft.note || ""}
+                onChange={(e) => patch({ note: e.target.value })}
+                placeholder="e.g. Lead with the offer, keep hashtags to three."
+              />
+              <small>Saved with the brand voice when you schedule. Future captions follow it.</small>
+            </Field>
+          )}
           {review ? (
             <p className="time-line">
               <Icon name="clock" />

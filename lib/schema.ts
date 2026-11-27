@@ -18,6 +18,8 @@ export const projects = pgTable("projects", {
   linked: jsonb().$type<NonNullable<Project["linked"]>>(),
   assets: jsonb().$type<Project["assets"]>().notNull(),
   posts: jsonb().$type<Project["posts"]>().notNull(),
+  // Editorial notes belong to the brand voice; see lib/model.ts.
+  editorial: jsonb().$type<NonNullable<Project["editorial"]>>(),
 });
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
