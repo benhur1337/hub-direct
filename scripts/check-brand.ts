@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { brandContext, initialProfile, normalizeProfile } from "../lib/brand-profile";
+import { captionRequest } from "../lib/captions";
+import type { Project } from "../lib/model";
 
 const profile = normalizeProfile(
   {
@@ -55,4 +57,39 @@ assert.throws(
   () => normalizeProfile({ visual_identity: { primary: "#XYZ" } }, [], false),
   /colour/,
 );
-console.log("Brand validation and platform context checks passed.");
+// Caption prompts keep their cached prefix stable: system, then brand context, then editorial notes.
+const captionProject: Project = { id: "p", ...project, channels: ["Instagram", "TikTok"], assets: [], posts: [] };
+const blocks = (p: Project, platform: "Instagram" | "TikTok", brief = "Launch") => {
+  const request = captionRequest(p, platform, brief);
+  const content = request.messages[0].content;
+  assert(Array.isArray(content));
+  return { system: request.system, content };
+};
+const bare = blocks(captionProject, "Instagram");
+assert.equal(bare.content.length, 2);
+assert.deepEqual(bare.content[0].cache_control, { type: "ephemeral" });
+const noted: Project = {
+  ...captionProject,
+  editorial: [
+    { id: "1", text: "Fewer emoji.", at: "2026-01-01T00:00:00.000Z" },
+    { id: "2", text: "Great hook.", at: "2026-01-02T00:00:00.000Z", platform: "Instagram", caption: "Doors open" },
+  ],
+};
+const withNotes = blocks(noted, "Instagram");
+const otherPlatform = blocks(noted, "TikTok", "A different brief");
+// Adding a note leaves the system prompt and brand block byte-identical, so they stay cached.
+assert.equal(withNotes.system, bare.system);
+assert.deepEqual(withNotes.content[0], bare.content[0]);
+assert.equal(withNotes.content.length, 3);
+assert.deepEqual(withNotes.content[1].cache_control, { type: "ephemeral" });
+assert.equal(
+  (withNotes.content[1] as { text: string }).text,
+  JSON.stringify({
+    editorialNotes: [{ note: "Fewer emoji." }, { note: "Great hook.", platform: "Instagram", aboutCaption: "Doors open" }],
+  }),
+);
+// Every platform and brief shares both cached blocks; only the last block differs.
+assert.deepEqual(otherPlatform.content.slice(0, 2), withNotes.content.slice(0, 2));
+assert.equal(otherPlatform.content[2].cache_control, undefined);
+assert.notDeepEqual(otherPlatform.content[2], withNotes.content[2]);
+console.log("Brand validation, platform context and caption cache layout checks passed.");

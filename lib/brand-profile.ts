@@ -180,3 +180,17 @@ export function brandContext(project: Pick<Project, "name" | "voice" | "brand">,
     },
   };
 }
+
+/**
+ * Editorial notes in the order they were written. The list is identical for every
+ * platform (notes name the platform they apply to), so it can share one cache entry.
+ */
+export function editorialContext(project: Pick<Project, "editorial">) {
+  const notes = project.editorial ?? [];
+  if (!notes.length) return;
+  return notes.map((n) => ({
+    note: n.text,
+    ...(n.platform ? { platform: n.platform } : {}),
+    ...(n.caption ? { aboutCaption: n.caption } : {}),
+  }));
+}

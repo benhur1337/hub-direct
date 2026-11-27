@@ -4,7 +4,17 @@ import { database } from "./db";
 import { connections, media, projects } from "./schema";
 import { deleteFile, getFile, putFile, R2ConfigurationError } from "./r2";
 import { randomUUID } from "node:crypto";
-import { allowedTypes, platforms, type Asset, type Platform, type Project, type Post } from "./model";
+import {
+  allowedTypes,
+  noteLength,
+  noteLimit,
+  platforms,
+  type Asset,
+  type EditorialNote,
+  type Platform,
+  type Project,
+  type Post,
+} from "./model";
 import { seal } from "./auth";
 import { brandSummary, normalizeProfile } from "./brand-profile";
 import { sections as brandSections } from "./brand-fields";
@@ -61,10 +71,10 @@ function locked(where: SQL, change?: Change) {
     const delivered = deliverDue(project);
     if (change) await change(project, tx);
     if (delivered || change) {
-      const { voice, brand, channels, linked, posts, assets } = project;
+      const { voice, brand, channels, linked, posts, assets, editorial } = project;
       await tx
         .update(projects)
-        .set({ voice, brand, channels, linked, posts, assets })
+        .set({ voice, brand, channels, linked, posts, assets, editorial })
         .where(where);
     }
     return project;
@@ -186,11 +196,12 @@ export async function addMedia(
   id: string,
   assets: { asset: Asset; data?: Buffer }[],
   existing: unknown,
-  brandUpload = false,
+  /** Brand files and library batches are not one post, so the post media rules do not apply. */
+  purpose?: "brand" | "library",
 ) {
   const project = await projectById(owner, id);
   const added = assets.map((item) => item.asset);
-  if (!brandUpload) {
+  if (!purpose) {
     const previous = mediaList(project, existing);
     project.assets.push(...added);
     mediaList(project, [...previous, ...added].map(asset => asset.id));
@@ -355,6 +366,7 @@ function applyAction(project: Project, body: Record<string, unknown>) {
         "Reopen the composer and try again.",
       );
       if (project.posts.some((post) => post.id === body.draftId)) return;
+      const note = body.note === undefined || body.note === "" ? undefined : field(body.note, "an editorial note", noteLength);
       project.posts.push({
         id: body.draftId,
         when: future(body.when),
@@ -362,8 +374,17 @@ function applyAction(project: Project, body: Record<string, unknown>) {
         media,
         destinations,
       });
+      // Checked after the post exists so the note can point at it; a retry returns above, so it is never added twice.
+      if (note) addNote(project, { noteId: body.draftId, text: note, postId: body.draftId });
       break;
     }
+    case "note": {
+      addNote(project, body);
+      return;
+    }
+    case "unnote":
+      project.editorial = (project.editorial ?? []).filter((n) => n.id !== body.noteId);
+      return;
     case "cancel":
     case "reschedule": {
       const post = project.posts.find((p) => p.id === body.postId);
@@ -384,4 +405,29 @@ function applyAction(project: Project, body: Record<string, unknown>) {
       throw new Problem("Choose a supported workspace action.");
   }
   project.posts.sort((a, b) => a.when.localeCompare(b.when));
+}
+
+/** Saves editorial feedback with the brand voice; caption requests send it with the brand context. */
+function addNote(project: Project, body: Record<string, unknown>) {
+  // The browser picks the ID, so a retried request after a lost response adds the note once.
+  check(typeof body.noteId === "string" && uuid.test(body.noteId), "Reopen the note and try again.");
+  if (project.editorial?.some((n) => n.id === body.noteId)) return;
+  const text = field(body.text, "an editorial note", noteLength);
+  check(
+    (project.editorial?.length ?? 0) < noteLimit,
+    `Keep up to ${noteLimit} editorial notes. Remove an older one in Brand voice first.`,
+  );
+  const note: EditorialNote = { id: body.noteId, text, at: new Date().toISOString() };
+  if (body.postId !== undefined) {
+    const post = project.posts.find((p) => p.id === body.postId);
+    check(post, "Choose an existing post.", 404);
+    note.postId = post.id;
+    if (body.platform !== undefined && body.platform !== "") {
+      const dest = post.destinations.find((d) => d.platform === selectPlatform(body.platform));
+      check(dest, "Choose a destination of this post.");
+      note.platform = dest.platform;
+      note.caption = dest.caption.slice(0, 280);
+    }
+  }
+  (project.editorial ??= []).push(note);
 }

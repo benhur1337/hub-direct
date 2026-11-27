@@ -1,7 +1,10 @@
 "use client";
 import { useState } from "react";
 import { allowedTypes, type Asset, type Platform, type Project } from "@/lib/model";
-import { api, Field, forPosting, Icon, localInput, Media, mediaAccept, message, PlatformMark, uploadMedia, UploadStatus } from "./ui";
+import { api, Field, Icon, localInput, Media, mediaAccept, message, PlatformMark, uploadBatch, UploadStatus } from "./ui";
+
+/** Files in one batch; they upload ten at a time. */
+const batchLimit = 50;
 
 export function Library({
   project,
@@ -62,14 +65,14 @@ export function Library({
       <div className="compose-heading">
         <h2>Media library</h2>
         <p className="lead">
-          Upload photos and videos any time. Describe each one and captions are written for every connected channel.
+          Upload photos and videos any time, up to {batchLimit} at once. Describe each one and captions are written for every connected channel. To turn a batch into a week of posts, use Plan week.
         </p>
       </div>
       <div className="form-panel">
         <div className="upload">
           <Icon name="upload" size={23} />
-          <UploadStatus busy={busy} percent={percent} idle="Upload photos or a video" />
-          <small>Up to 10 photos (8 MB each) or 1 video (40 MB) at a time</small>
+          <UploadStatus busy={busy} percent={percent} idle="Upload a batch of photos and videos" />
+          <small>Up to {batchLimit} files: photos up to 8 MB, videos up to 40 MB each</small>
           <input
             aria-label="Upload media to library"
             type="file"
@@ -81,14 +84,20 @@ export function Library({
               e.target.value = "";
               if (!files.length) return;
               void work("Uploading…", async () => {
-                const ready = await forPosting(files, (p) => {
-                  setBusy("Converting video…");
-                  setPercent(p);
-                });
-                setBusy("Uploading…");
-                setPercent(0);
-                const added = await uploadMedia(project.id, ready, {}, setPercent);
-                update({ ...project, assets: [...project.assets, ...added] });
+                if (files.length > batchLimit) throw new Error(`Choose up to ${batchLimit} files at a time.`);
+                let assets = project.assets;
+                await uploadBatch(
+                  project.id,
+                  files,
+                  (label, p) => {
+                    setBusy(label);
+                    setPercent(p);
+                  },
+                  (added) => {
+                    assets = [...assets, ...added];
+                    update({ ...project, assets });
+                  },
+                );
               });
             }}
           />

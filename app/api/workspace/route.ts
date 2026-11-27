@@ -26,7 +26,8 @@ import {
   type Project,
 } from "@/lib/model";
 import { R2ConfigurationError, signedFileUrl, uploadedFile, uploadUrl } from "@/lib/r2";
-import { brandContext, BrandInputError } from "@/lib/brand-profile";
+import { BrandInputError } from "@/lib/brand-profile";
+import { captionRequest } from "@/lib/captions";
 import { shareTarget } from "@/lib/publish";
 import { newSession, sessionAge, sessionCookie, sessionUser, signIn, signUp } from "@/lib/auth";
 
@@ -182,7 +183,8 @@ async function upload(user: string, body: Record<string, unknown>) {
 }
 async function attach(user: string, body: Record<string, unknown>) {
   const projectId = String(body.project);
-  const brandUpload = body.purpose === "brand";
+  const purpose = body.purpose === "brand" || body.purpose === "library" ? body.purpose : undefined;
+  const brandUpload = purpose === "brand";
   const types = brandUpload ? brandAssetTypes : allowedTypes;
   const list = body.assets;
   check(Array.isArray(list) && list.length && list.length <= 10, "Choose up to ten photos or one video.");
@@ -207,7 +209,7 @@ async function attach(user: string, body: Record<string, unknown>) {
       return { asset: { id, name: String(item.name).slice(0, 255), type } };
     }),
   );
-  await addMedia(user, projectId, assets, body.existing ?? [], brandUpload);
+  await addMedia(user, projectId, assets, body.existing ?? [], purpose);
   return NextResponse.json({ assets: assets.map((item) => item.asset) });
 }
 async function generate(user: string, body: Record<string, unknown>) {
@@ -239,9 +241,6 @@ async function describe(user: string, body: Record<string, unknown>) {
   return NextResponse.json({ asset: { ...asset, description, captions } });
 }
 async function writeCaption(project: Project, platform: Platform, brief: string, mediaDescription?: string) {
-  // Brand context minus platform notes is identical for every platform, so it forms the cached prefix.
-  const shared = brandContext(project, "");
-  const guidelines = brandContext(project, platform).data.preferences?.social_platforms?.guidelines;
   check(
     process.env.ANTHROPIC_API_KEY?.trim(),
     "Set ANTHROPIC_API_KEY in .env.local and restart, or enter your caption below.",
@@ -251,38 +250,9 @@ async function writeCaption(project: Project, platform: Platform, brief: string,
     "Caption generation is unavailable. Retry or edit the caption manually.";
   let caption: string | undefined;
   try {
-    const response = await new Anthropic({ timeout: 60000 }).beta.messages.create({
-      model: "claude-sonnet-5-5",
-      max_tokens: 16000,
-      output_config: { effort: "low" },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system:
-        "Draft one social caption for the specified platform in this brand's voice. " +
-        shared.instruction +
-        " The media description is the user's own summary of the attached photos or video; describe only what it states. Return only the editable caption, up to 6000 characters.",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ brandContext: shared.data }),
-              cache_control: { type: "ephemeral" },
-            },
-            {
-              type: "text",
-              text: JSON.stringify({
-                platform,
-                ...(guidelines ? { platformGuidelines: guidelines } : {}),
-                brief,
-                ...(mediaDescription ? { mediaDescription } : {}),
-              }),
-            },
-          ],
-        },
-      ],
-    });
+    const response = await new Anthropic({ timeout: 60000 }).beta.messages.create(
+      captionRequest(project, platform, brief, mediaDescription),
+    );
     console.log("Caption usage", platform, response.usage);
     if (response.stop_reason === "end_turn")
       caption = response.content

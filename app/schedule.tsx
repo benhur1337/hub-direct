@@ -11,6 +11,7 @@ import {
   PlatformMark,
   prettyTime,
 } from "./ui";
+import { PostNotes } from "./editorial";
 
 const statusLabels: Record<Status, string> = {
   Scheduled: "Scheduled",
@@ -136,6 +137,7 @@ function PostRow({
             )}
           </div>
         ))}
+        <PostNotes project={project} post={post} update={update} />
         {status === "Scheduled" &&
           (!edit ? (
             <div className="actions">

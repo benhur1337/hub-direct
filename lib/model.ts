@@ -27,6 +27,23 @@ export type Post = {
   media: string[];
   destinations: Destination[];
 };
+/**
+ * Editorial feedback kept with the brand voice. Every caption request sends the
+ * whole list, in its own cached block after the brand profile.
+ */
+export type EditorialNote = {
+  id: string;
+  text: string;
+  at: string;
+  /** The post the note was written about, when it came from the composer or schedule. */
+  postId?: string;
+  /** Set when the note is about one destination; captions for other channels ignore it. */
+  platform?: Platform;
+  /** The start of the caption it refers to, so the note keeps its meaning. */
+  caption?: string;
+};
+export const noteLength = 500;
+export const noteLimit = 40;
 export type Project = {
   id: string;
   name: string;
@@ -37,6 +54,7 @@ export type Project = {
   linked?: Partial<Record<Platform, string>> | null;
   assets: Asset[];
   posts: Post[];
+  editorial?: EditorialNote[] | null;
 };
 export const photoLimit = 8 * 1024 * 1024;
 export const videoLimit = 40 * 1024 * 1024;
