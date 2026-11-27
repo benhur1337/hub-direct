@@ -58,7 +58,7 @@ Use the S3 endpoint shown for your bucket. The workspace validates uploads befor
 
 For workspaces that already store files in Neon, run `npm run media:migrate`. It copies each attachment to R2, verifies its bytes, and preserves existing links and the database copy. You can rerun it after an interruption. Existing Neon attachments remain readable while configuring R2.
 
-The database schema lives in `lib/schema.ts`. After editing it, run `npm run db:generate`, review the generated SQL in `drizzle/`, then run `npm run db:migrate`.
+The database schema lives in `lib/schema.ts`. After editing it, run `npm run db:generate`, review the generated SQL in `drizzle/`, then run `npm run db:migrate`. On Vercel, every deployment applies pending migrations before building (the `vercel-build` script), using that environment's `DATABASE_URL_UNPOOLED` or `DATABASE_URL`; migrations only add, so the deployment still running keeps working. If a Build Command override is set in the Vercel project settings, it replaces this script. Previews that share the production database migrate it too.
 
 To migrate an existing file-backed workspace, stop its old server, configure R2, apply the database migration, and run `npm run db:import`. The importer reads `.hub-data/` or the directory specified by `HUB_DATA_DIR`. It copies and verifies files in R2 before committing their project metadata to Neon. It preserves original IDs and source files and skips existing projects on reruns.
 
