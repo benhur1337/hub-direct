@@ -9,10 +9,10 @@ const names = { en: "EN", th: "ไทย" } as const;
 const fullNames = { en: "English", th: "ภาษาไทย" } as const;
 
 /**
- * Switches between English (/) and Thai (/th). The choice is saved in the NEXT_LOCALE
- * cookie, so later visits open in the same language. `query` reopens the same screen.
+ * Switches between English (/en) and Thai (/th) on the same page. The choice is saved in the
+ * NEXT_LOCALE cookie, so later visits open in the same language. `query` reopens the same screen.
  */
-export function LanguageSwitch({ query }: { query?: Record<string, string> }) {
+export function LanguageSwitch({ query, pathname = "/" }: { query?: Record<string, string>; pathname?: "/" | "/login" | "/signup" }) {
   const t = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
@@ -29,7 +29,7 @@ export function LanguageSwitch({ query }: { query?: Record<string, string> }) {
           disabled={pending}
           onClick={() => {
             if (l === locale) return;
-            start(() => router.replace({ pathname: "/", query }, { locale: l, scroll: false }));
+            start(() => router.replace({ pathname, query }, { locale: l, scroll: false }));
           }}
         >
           {names[l]}

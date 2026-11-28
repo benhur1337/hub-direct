@@ -62,9 +62,6 @@
   "landing": {
     "home": "หน้าแรก Hub Connect",
     "navigation": "เมนูหน้าแรก",
-    "email": "อีเมล",
-    "password": "รหัสผ่าน",
-    "opening": "กำลังเปิดพื้นที่ทำงาน…",
     "signIn": "เข้าสู่ระบบ",
     "createAccount": "สร้างบัญชี",
     "hero": "พื้นที่<br></br>เผยแพร่<br></br>โซเชียล",
@@ -177,6 +174,30 @@
       "wordsWeUse": "คำที่เราใช้",
       "words": "รูปทรง · พื้นผิว · สีสัน"
     }
+  },
+  "auth": {
+    "home": "หน้าแรก Hub Connect",
+    "metaSignIn": "เข้าสู่ระบบ — Hub Connect",
+    "metaSignUp": "สร้างบัญชี — Hub Connect",
+    "signInTitle": "เข้าสู่ระบบ",
+    "signInLead": "ยินดีต้อนรับกลับมา เข้าสู่ระบบเพื่อเปิดพื้นที่ทำงานของคุณ",
+    "signUpTitle": "สร้างบัญชีของคุณ",
+    "signUpLead": "วางแผน เขียน และตั้งเวลาโพสต์ให้ทุกแบรนด์ได้ในที่เดียว",
+    "email": "อีเมล",
+    "emailPlaceholder": "you@example.com",
+    "password": "รหัสผ่าน",
+    "passwordHint": "ใช้ 8 ถึง 128 ตัวอักษร",
+    "showPassword": "แสดงรหัสผ่าน",
+    "hidePassword": "ซ่อนรหัสผ่าน",
+    "signIn": "เข้าสู่ระบบ",
+    "signingIn": "กำลังเข้าสู่ระบบ…",
+    "createAccount": "สร้างบัญชี",
+    "creating": "กำลังสร้างบัญชี…",
+    "noAccount": "ยังไม่มีบัญชี",
+    "toSignUp": "สร้างบัญชี",
+    "haveAccount": "มีบัญชีอยู่แล้ว",
+    "toSignIn": "เข้าสู่ระบบ",
+    "back": "กลับไปหน้าแรก"
   },
   "composer": {
     "title": "เขียนโพสต์",

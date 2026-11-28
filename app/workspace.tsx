@@ -159,7 +159,7 @@ export function Desk({
     if (returned || reopen) window.history.replaceState(null, "", window.location.pathname);
   }, [returned, reopen]);
   if (!signedIn) {
-    return <Landing busy={busy} error={error} enter={session} />;
+    return <Landing />;
   }
   const upcoming = projects
     .flatMap((p) =>
