@@ -17,6 +17,8 @@ The light interface uses near-black type on warm parchment. A single CSS sphere 
 
 The live OFF+BRAND site uses Ataero Retina OB Edition. Hub Connect uses that family when installed locally and bundles Manrope under the SIL Open Font License as its geometric substitute. An exact match across devices requires the licensed Ataero webfont.
 
+Thai text uses Noto Sans Thai (bundled, SIL Open Font License), loaded only for Thai characters so Latin text keeps Manrope. Thai has no capitals and stacks tone marks above and vowels below, so under `:lang(th)` display type opens to a 1.12–1.25 line height, body to 1.6, and tracking returns to zero.
+
 Use regular weight for display and body, with bold reserved for small labels and navigation. Set the desktop display at 70–103 px, uppercase, with 0.80 line height and tight tracking. Use 34–46 px for section and project titles and 15–18 px for left-aligned body text. Captions use 11 px, 1.4 line height, and 0.05 em tracking.
 
 ## Layout and components

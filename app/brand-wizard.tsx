@@ -1,5 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Problem } from "@/lib/problem";
 import { sections, type BrandField } from "@/lib/brand-fields";
 import {
   answerText,
@@ -11,12 +13,11 @@ import {
   type BrandProfile,
 } from "@/lib/brand-profile";
 import { brandAssetTypes, photoLimit, videoLimit, type Project } from "@/lib/model";
-import { api, Icon, message, uploadMedia } from "./ui";
-import { BrandInput } from "./brand-input";
+import { api, Icon, uploadMedia, useErrorText } from "./ui";
+import { BrandInput, useBrandText } from "./brand-input";
 import "./brand-wizard.css";
 
 const reviewStep = sections.length;
-const titles = [...sections.map((s) => s.title), "Review profile"];
 
 export function BrandWizard({
   project,
@@ -25,6 +26,10 @@ export function BrandWizard({
   project: Project;
   update: (p: Project) => void;
 }) {
+  const t = useTranslations("brand");
+  const bt = useBrandText();
+  const errorText = useErrorText();
+  const titles = [...sections.map((_, i) => bt.section(i)), t("reviewStep")];
   const saved = project.brand;
   const startingProfile =
     saved?.draft ?? saved?.completed ?? initialProfile(project.name, project.voice);
@@ -56,40 +61,40 @@ export function BrandWizard({
   async function upload(f: BrandField, files: File[]) {
     setError("");
     setStatus("");
-    setBusy("Uploading…");
+    setBusy(t("uploading"));
     try {
       const ids = strings(profile.visual_identity?.assets);
       if (files.length > 10 || (f.kind === "assets" && files.length + ids.length > 40))
-        throw new Error("Choose up to ten files at a time and up to 40 brand assets in total.");
+        throw new Problem("brandUploadCount");
       for (const file of files) {
         if (
           !brandAssetTypes.includes(file.type) ||
           (f.kind === "logo" && !file.type.startsWith("image/"))
         )
-          throw new Error("Choose a supported file type shown under the upload button.");
+          throw new Problem("brandUploadType");
         if (!file.size || file.size > (file.type.startsWith("video/") ? videoLimit : photoLimit))
-          throw new Error("Choose non-empty images or PDFs up to 8 MB, or videos up to 40 MB.");
+          throw new Problem("brandUploadSize");
       }
       const assets = await uploadMedia(project.id, files, { purpose: "brand" });
       update({ ...project, assets: [...project.assets, ...assets] });
       change(f, f.kind === "logo" ? assets[0].id : [...ids, ...assets.map((a) => a.id)]);
-      setStatus("Files uploaded. Save your draft or finish your profile to keep this selection.");
+      setStatus(t("uploaded"));
     } catch (e) {
-      setError(message(e));
+      setError(errorText(e));
     } finally {
       setBusy("");
     }
   }
   function invalid(e: unknown) {
     if (e instanceof BrandInputError && e.step !== step) move(e.step, reviewing);
-    setError(message(e));
+    setError(errorText(e));
   }
   async function save(complete: boolean) {
     setError("");
     setStatus("");
     try {
       const clean = normalizeProfile(profile, project.assets, complete);
-      setBusy("Saving…");
+      setBusy(t("saving"));
       const { project: next }: { project: Project } = await api({
         action: "brand",
         project: project.id,
@@ -102,11 +107,7 @@ export function BrandWizard({
       setRevision(next.brand!.revision);
       setProfile(clean);
       setEditing(!complete);
-      setStatus(
-        complete
-          ? "Profile saved. New captions will use these guidelines."
-          : "Draft saved. You can return to this step later.",
-      );
+      setStatus(complete ? t("profileSaved") : t("draftSaved"));
     } catch (e) {
       invalid(e);
     } finally {
@@ -155,11 +156,9 @@ export function BrandWizard({
         <span className="desk-mark">
           <Icon name="voice" size={22} />
         </span>
-        <h2>Brand voice</h2>
-        <p className="lead">
-          Build the profile that guides your captions. Only your brand name is required.
-        </p>
-        <nav aria-label="Brand profile sections" className="brand-steps">
+        <h2>{t("title")}</h2>
+        <p className="lead">{t("lead")}</p>
+        <nav aria-label={t("sections")} className="brand-steps">
           {titles.map((title, i) => (
             <button
               key={title}
@@ -174,15 +173,15 @@ export function BrandWizard({
           ))}
         </nav>
         <label className="field brand-jump">
-          <span>Go to section</span>
+          <span>{t("goTo")}</span>
           <select
             value={step}
             disabled={!!busy}
             onChange={(e) => move(Number(e.target.value), reviewing)}
           >
-            {titles.map((t, i) => (
-              <option value={i} key={t}>
-                {i + 1}. {t}
+            {titles.map((title, i) => (
+              <option value={i} key={title}>
+                {i + 1}. {title}
               </option>
             ))}
           </select>
@@ -198,19 +197,14 @@ export function BrandWizard({
       >
         <div className="brand-progress">
           <span className="section-label">
-            Step {step + 1} of {titles.length}
+            {t("step", { step: step + 1, total: titles.length })}
           </span>
-          <progress value={step + 1} max={titles.length} aria-label="Onboarding progress" />
+          <progress value={step + 1} max={titles.length} aria-label={t("progress")} />
         </div>
         <h3 tabIndex={-1} ref={heading}>
-          {reviewing && !editing ? "Saved brand profile" : titles[step]}
+          {reviewing && !editing ? t("savedTitle") : titles[step]}
         </h3>
-        <p>
-          {section?.hint ??
-            (editing
-              ? "Check your answers before saving. You can edit any section."
-              : "These guidelines are used for new captions.")}
-        </p>
+        <p>{section ? bt.sectionHint(step) : editing ? t("reviewHint") : t("savedHint")}</p>
         <fieldset disabled={!!busy} key={step} className="brand-fields">
           <legend className="brand-sr">{titles[step]}</legend>
           {reviewing ? (
@@ -218,33 +212,33 @@ export function BrandWizard({
               const entries = s.fields
                 .map((f) => ({
                   f,
-                  answer: answerText(f, profile, project.assets),
+                  answer: answerText(f, profile, project.assets, bt.option),
                 }))
                 .filter((v) => v.answer);
               return (
                 <section className="brand-review" key={s.title}>
                   <div>
-                    <h4>{s.title}</h4>
+                    <h4>{bt.section(i)}</h4>
                     <button
                       type="button"
                       className="text-button"
-                      aria-label={"Edit " + s.title}
+                      aria-label={t("editSection", { section: bt.section(i) })}
                       onClick={() => move(i, true)}
                     >
-                      Edit
+                      {t("edit")}
                     </button>
                   </div>
                   {entries.length ? (
                     <dl>
                       {entries.map(({ f, answer }) => (
                         <div key={f.group + f.key}>
-                          <dt>{f.label}</dt>
+                          <dt>{bt.label(f)}</dt>
                           <dd>{answer}</dd>
                         </div>
                       ))}
                     </dl>
                   ) : (
-                    <p>No details added.</p>
+                    <p>{t("noDetails")}</p>
                   )}
                 </section>
               );
@@ -254,7 +248,7 @@ export function BrandWizard({
               {visible.filter((f) => !f.advanced).map(input)}
               {visible.some((f) => f.advanced) && (
                 <details className="brand-advanced">
-                  <summary>Advanced options</summary>
+                  <summary>{t("advanced")}</summary>
                   <div>{visible.filter((f) => f.advanced).map(input)}</div>
                 </details>
               )}
@@ -276,7 +270,7 @@ export function BrandWizard({
               disabled={!!busy}
               onClick={() => void save(false)}
             >
-              Save draft
+              {t("saveDraft")}
             </button>
             <div className="actions">
               {step > 0 && (
@@ -286,7 +280,7 @@ export function BrandWizard({
                   disabled={!!busy}
                   onClick={() => move(step - 1)}
                 >
-                  Back
+                  {t("back")}
                 </button>
               )}
               {!reviewing && (
@@ -296,17 +290,17 @@ export function BrandWizard({
                   disabled={!!busy}
                   onClick={() => move(returnToReview ? reviewStep : step + 1)}
                 >
-                  Skip
+                  {t("skip")}
                 </button>
               )}
               <button type="submit" className="primary" disabled={!!busy}>
                 {reviewing
-                  ? "Save profile"
+                  ? t("saveProfile")
                   : returnToReview
-                    ? "Return to review"
+                    ? t("returnToReview")
                     : step === reviewStep - 1
-                      ? "Review profile"
-                      : "Next"}
+                      ? t("reviewStep")
+                      : t("next")}
                 <Icon name="arrow" />
               </button>
             </div>

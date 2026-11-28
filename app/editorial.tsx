@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   noteLength,
   noteLimit,
@@ -7,10 +8,7 @@ import {
   type Post,
   type Project,
 } from "@/lib/model";
-import { api, Field, Icon, message, PlatformMark } from "./ui";
-
-const when = (note: EditorialNote) =>
-  new Date(note.at).toLocaleDateString(undefined, { dateStyle: "medium" });
+import { api, Field, Icon, PlatformMark, useErrorText } from "./ui";
 
 /** Adds a note to the brand voice, optionally about one post and one of its channels. */
 function NoteForm({
@@ -22,6 +20,8 @@ function NoteForm({
   update: (p: Project) => void;
   post?: Post;
 }) {
+  const t = useTranslations("notes");
+  const errorText = useErrorText();
   const [text, setText] = useState("");
   const [platform, setPlatform] = useState("");
   // Kept across retries so a lost response cannot save the note twice.
@@ -49,38 +49,30 @@ function NoteForm({
             setPlatform("");
             setNoteId(crypto.randomUUID());
           })
-          .catch((err) => setError(message(err)))
+          .catch((err) => setError(errorText(err)))
           .finally(() => setBusy(false));
       }}
     >
-      <Field label={post ? "Add an editorial note" : "Add a note"}>
+      <Field label={post ? t("addForPost") : t("add")}>
         <textarea
           required
           maxLength={noteLength}
           disabled={busy || full}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={
-            post
-              ? "What should future captions keep or change? e.g. Great hook. Fewer emoji."
-              : "e.g. Always mention free delivery on product posts."
-          }
+          placeholder={post ? t("postPlaceholder") : t("placeholder")}
         />
-        <small>
-          {full
-            ? `You have ${noteLimit} notes. Remove one in Brand voice to add another.`
-            : "Saved with the brand voice. Captions generated from now on follow it."}
-        </small>
+        <small>{full ? t("full", { limit: noteLimit }) : t("hint")}</small>
       </Field>
       <div className="actions">
         {post && post.destinations.length > 1 && (
           <label className="note-scope">
-            About
+            {t("about")}
             <select value={platform} disabled={busy} onChange={(e) => setPlatform(e.target.value)}>
-              <option value="">All channels</option>
+              <option value="">{t("allChannels")}</option>
               {post.destinations.map((d) => (
                 <option key={d.platform} value={d.platform}>
-                  {d.platform} caption
+                  {t("platformCaption", { platform: d.platform })}
                 </option>
               ))}
             </select>
@@ -88,7 +80,7 @@ function NoteForm({
         )}
         <button className="secondary" disabled={busy || full || !text.trim()}>
           <Icon name="note" size={15} />
-          {busy ? "Saving…" : "Save note"}
+          {busy ? t("saving") : t("save")}
         </button>
       </div>
       {error && (
@@ -111,6 +103,9 @@ function NoteItem({
   update: (p: Project) => void;
   showPost?: boolean;
 }) {
+  const t = useTranslations("notes");
+  const locale = useLocale();
+  const errorText = useErrorText();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const post = showPost && note.postId && project.posts.find((p) => p.id === note.postId);
@@ -119,7 +114,7 @@ function NoteItem({
       <p className="preserve">{note.text}</p>
       <small className="note-meta">
         {note.platform && <PlatformMark platform={note.platform} />}
-        {when(note)}
+        {new Date(note.at).toLocaleDateString(locale, { dateStyle: "medium" })}
         {note.platform && " · " + note.platform}
         {post && " · " + post.brief}
       </small>
@@ -127,20 +122,20 @@ function NoteItem({
       <button
         className="text-button"
         disabled={busy}
-        aria-label={"Remove note: " + note.text.slice(0, 60)}
+        aria-label={t("removeLabel", { note: note.text.slice(0, 60) })}
         onClick={() => {
           setBusy(true);
           setError("");
           api({ action: "unnote", project: project.id, noteId: note.id })
             .then((data) => update(data.project))
             .catch((err) => {
-              setError(message(err));
+              setError(errorText(err));
               setBusy(false);
             });
         }}
       >
         <Icon name="close" size={15} />
-        {busy ? "Removing…" : "Remove"}
+        {busy ? t("removing") : t("remove")}
       </button>
       {error && (
         <p className="error" role="alert">
@@ -161,9 +156,10 @@ export function PostNotes({
   post: Post;
   update: (p: Project) => void;
 }) {
+  const tNotes = useTranslations("notes");
   const notes = (project.editorial ?? []).filter((n) => n.postId === post.id);
   return (
-    <section className="post-notes" aria-label="Editorial notes">
+    <section className="post-notes" aria-label={tNotes("title")}>
       {notes.length > 0 && (
         <ul className="note-list">
           {notes.map((n) => (
@@ -184,6 +180,7 @@ export function EditorialNotes({
   project: Project;
   update: (p: Project) => void;
 }) {
+  const t = useTranslations("notes");
   const notes = [...(project.editorial ?? [])].reverse();
   return (
     <section className="form-layout editorial">
@@ -191,11 +188,8 @@ export function EditorialNotes({
         <span className="desk-mark">
           <Icon name="note" size={22} />
         </span>
-        <h2>Editorial notes</h2>
-        <p className="lead">
-          Feedback from the composer and schedule lives here with the brand voice. Every generated
-          caption follows these notes, with later notes taking priority.
-        </p>
+        <h2>{t("title")}</h2>
+        <p className="lead">{t("lead")}</p>
       </div>
       <div className="form-panel">
         <NoteForm project={project} update={update} />
@@ -206,9 +200,7 @@ export function EditorialNotes({
             ))}
           </ul>
         ) : (
-          <p className="muted">
-            No notes yet. Add one here, when you confirm a post, or from any post in the schedule.
-          </p>
+          <p className="muted">{t("empty")}</p>
         )}
       </div>
     </section>

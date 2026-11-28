@@ -26,7 +26,10 @@ import {
   type Project,
 } from "@/lib/model";
 import { R2ConfigurationError, signedFileUrl, uploadedFile, uploadUrl } from "@/lib/r2";
-import { BrandInputError } from "@/lib/brand-profile";
+import { hasLocale } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import { routing } from "@/i18n/routing";
+import { problemText, type Translate } from "@/lib/problem";
 import { captionRequest } from "@/lib/captions";
 import { shareTarget } from "@/lib/publish";
 import { newSession, sessionAge, sessionCookie, sessionUser, signIn, signUp } from "@/lib/auth";
@@ -36,30 +39,23 @@ function signedIn(req: NextRequest) {
 }
 function requireUser(req: NextRequest) {
   const user = signedIn(req);
-  check(user, "Sign in to open the workspace.", 401);
+  check(user, "signInRequired", 401);
   return user;
 }
-function failure(error: unknown) {
-  if (error instanceof BrandInputError)
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  if (error instanceof R2ConfigurationError)
-    return NextResponse.json({ error: error.message }, { status: 503 });
+/** Errors are written in the language of the page that called (sent as X-Locale), English otherwise. */
+async function failure(req: NextRequest, error: unknown) {
+  const header = req.headers.get("x-locale");
+  const locale = hasLocale(routing.locales, header) ? header : routing.defaultLocale;
+  const t = (await getTranslations({ locale })) as unknown as Translate;
   if (error instanceof Problem)
-    return NextResponse.json(
-      { error: error.message },
-      { status: error.status },
-    );
+    return NextResponse.json({ error: problemText(t, error) }, { status: error.status });
+  if (error instanceof R2ConfigurationError)
+    return NextResponse.json({ error: t("errors.storageConfig") }, { status: 503 });
   console.error(
     "Workspace request failed",
     error instanceof Error ? error.name : "Unknown error",
   );
-  return NextResponse.json(
-    {
-      error:
-        "The workspace could not be saved or opened. Check the storage connection and retry.",
-    },
-    { status: 500 },
-  );
+  return NextResponse.json({ error: t("errors.server") }, { status: 500 });
 }
 export async function GET(req: NextRequest) {
   try {
@@ -67,7 +63,7 @@ export async function GET(req: NextRequest) {
     // Signed, expiring media links that Meta fetches when publishing.
     if (params.has("share")) {
       const target = shareTarget(params.get("share") || "");
-      check(target, "This link has expired.", 404);
+      check(target, "linkExpired", 404);
       const { project, asset } = await sharedAsset(target.projectId, target.assetId);
       return new Response(await assetData(project, asset), {
         headers: { "Content-Type": asset.type, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" },
@@ -76,7 +72,7 @@ export async function GET(req: NextRequest) {
     if (params.has("asset")) {
       const project = await projectById(requireUser(req), params.get("project") || "");
       const asset = project.assets.find((a) => a.id === params.get("asset"));
-      check(asset, "This attachment is unavailable.", 404);
+      check(asset, "attachmentUnavailable", 404);
       // Send the browser straight to R2; files still stored in Neon (or no R2 configured) stream below.
       const link = await signedFileUrl(project.id, asset).catch((error) => {
         if (error instanceof R2ConfigurationError) return undefined;
@@ -104,7 +100,7 @@ export async function GET(req: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    return failure(error);
+    return await failure(req, error);
   }
 }
 
@@ -135,11 +131,11 @@ function sniff(bytes: Buffer) {
 async function limitedBody(req: NextRequest, limit: number) {
   check(
     Number(req.headers.get("content-length") || 0) <= limit,
-    "This upload is too large. Choose smaller files.",
+    "uploadTooLarge",
     413,
   );
   const reader = req.body?.getReader();
-  check(reader, "Send a request body.");
+  check(reader, "sendBody");
   const chunks: Uint8Array[] = [];
   let size = 0;
   for (;;) {
@@ -148,7 +144,7 @@ async function limitedBody(req: NextRequest, limit: number) {
     size += value.byteLength;
     if (size > limit) {
       await reader.cancel();
-      throw new Problem("This upload is too large. Choose smaller files.", 413);
+      throw new Problem("uploadTooLarge", 413);
     }
     chunks.push(value);
   }
@@ -161,7 +157,7 @@ async function upload(user: string, body: Record<string, unknown>) {
   const files = body.files;
   check(
     Array.isArray(files) && files.length && files.length <= 10,
-    "Choose up to ten photos or one video.",
+    "uploadCount",
   );
   const uploads = await Promise.all(
     files.map(async (file) => {
@@ -169,11 +165,11 @@ async function upload(user: string, body: Record<string, unknown>) {
       const size = Number(file?.size);
       check(
         types.includes(type),
-        body.purpose === "brand" ? "Choose a JPEG, PNG, WebP, MP4, WebM, or PDF file." : "Choose JPEG, PNG, WebP, MP4, or WebM files.",
+        body.purpose === "brand" ? "uploadTypesBrand" : "uploadTypes",
       );
       check(
         Number.isInteger(size) && size > 0 && size <= (type.startsWith("video/") ? videoLimit : photoLimit),
-        "Use photos up to 8 MB or a video up to 40 MB.",
+        "uploadSize",
       );
       const asset = { id: randomUUID(), name: String(file.name).slice(0, 255), type };
       return { asset, url: await uploadUrl(project.id, asset, size) };
@@ -187,24 +183,24 @@ async function attach(user: string, body: Record<string, unknown>) {
   const brandUpload = purpose === "brand";
   const types = brandUpload ? brandAssetTypes : allowedTypes;
   const list = body.assets;
-  check(Array.isArray(list) && list.length && list.length <= 10, "Choose up to ten photos or one video.");
+  check(Array.isArray(list) && list.length && list.length <= 10, "uploadCount");
   await projectById(user, projectId);
   const assets = await Promise.all(
     list.map(async (item) => {
       const id = String(item?.id);
-      check(/^[0-9a-f-]{36}$/.test(id), "Upload the files again.");
+      check(/^[0-9a-f-]{36}$/.test(id), "uploadAgain");
       const file = await uploadedFile(projectId, id);
-      check(file, "The upload did not finish. Try again.");
+      check(file, "uploadUnfinished");
       const type = String(file.type);
       check(
         types.includes(type) &&
           file.size > 0 &&
           file.size <= (type.startsWith("video/") ? videoLimit : photoLimit),
-        "Use photos up to 8 MB or a video up to 40 MB.",
+        "uploadSize",
       );
       check(
         sniff(file.head) === type,
-        "The file contents do not match its type. Export the media again.",
+        "contentMismatch",
       );
       return { asset: { id, name: String(item.name).slice(0, 255), type } };
     }),
@@ -215,11 +211,11 @@ async function attach(user: string, body: Record<string, unknown>) {
 async function generate(user: string, body: Record<string, unknown>) {
   const project = await projectById(user, String(body.project));
   const platform = selectPlatform(body.platform);
-  check(project.channels.includes(platform), "Connect the destination first.");
-  const brief = field(body.brief, "a post brief", 4000);
+  check(project.channels.includes(platform), "connectDestination");
+  const brief = field(body.brief, "postBrief", 4000);
   const media = mediaList(project, body.media ?? []);
   const mediaDescription = media.length
-    ? field(body.mediaDescription, "a short description of the attached media", 1000)
+    ? field(body.mediaDescription, "mediaDescription", 1000)
     : undefined;
   return NextResponse.json({ caption: await writeCaption(project, platform, brief, mediaDescription) });
 }
@@ -227,8 +223,8 @@ async function generate(user: string, body: Record<string, unknown>) {
 async function describe(user: string, body: Record<string, unknown>) {
   const project = await projectById(user, String(body.project));
   const [asset] = mediaList(project, [body.asset]);
-  const description = field(body.description, "a short description of the media", 1000);
-  check(project.channels.length, "Connect a channel before generating captions.");
+  const description = field(body.description, "mediaSummary", 1000);
+  check(project.channels.length, "connectForCaptions");
   // First caption writes the brand-context cache; the rest run in parallel and read it.
   const [first, ...rest] = project.channels;
   const captions = { [first]: await writeCaption(project, first, description, description) };
@@ -243,11 +239,9 @@ async function describe(user: string, body: Record<string, unknown>) {
 async function writeCaption(project: Project, platform: Platform, brief: string, mediaDescription?: string) {
   check(
     process.env.ANTHROPIC_API_KEY?.trim(),
-    "Set ANTHROPIC_API_KEY in .env.local and restart, or enter your caption below.",
+    "anthropicKey",
     503,
   );
-  const unavailable =
-    "Caption generation is unavailable. Retry or edit the caption manually.";
   let caption: string | undefined;
   try {
     const response = await new Anthropic({ timeout: 60000 }).beta.messages.create(
@@ -262,7 +256,7 @@ async function writeCaption(project: Project, platform: Platform, brief: string,
   } catch (error) {
     console.error("Caption generation failed", error instanceof Error ? error.name : "Unknown error");
   }
-  check(caption && caption.length <= 6000, unavailable, 503);
+  check(caption && caption.length <= 6000, "captionUnavailable", 503);
   return caption;
 }
 export async function POST(req: NextRequest) {
@@ -270,13 +264,13 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin");
     check(
       !origin || new URL(origin).host === req.headers.get("host"),
-      "Open the workspace at its own web address and try again.",
+      "wrongOrigin",
       403,
     );
     const contentType = req.headers.get("content-type") || "";
     check(
       contentType.startsWith("application/json"),
-      "Send a JSON request.",
+      "sendJson",
       415,
     );
     const bytes = await limitedBody(req, 160000);
@@ -284,11 +278,11 @@ export async function POST(req: NextRequest) {
     try {
       body = JSON.parse(bytes.toString());
     } catch {
-      throw new Problem("The request could not be read. Try again.");
+      throw new Problem("unreadable");
     }
     check(
       body && typeof body === "object" && !Array.isArray(body),
-      "Choose a workspace action.",
+      "chooseAction",
     );
     if (["signin", "signup", "signout"].includes(body.action)) {
       // shortcut: x-forwarded-for is client-set unless a proxy overwrites it; behind one, trust only the proxy's entry.
@@ -322,6 +316,6 @@ export async function POST(req: NextRequest) {
         : await updateProject(user, body.project, body);
     return NextResponse.json({ project });
   } catch (error) {
-    return failure(error);
+    return await failure(req, error);
   }
 }

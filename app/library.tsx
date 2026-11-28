@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { Problem } from "@/lib/problem";
 import { allowedTypes, type Asset, type Platform, type Project } from "@/lib/model";
-import { api, Field, Icon, localInput, Media, mediaAccept, message, PlatformMark, uploadBatch, UploadStatus } from "./ui";
+import { api, Field, Icon, localInput, Media, mediaAccept, PlatformMark, uploadBatch, UploadStatus, useBatchLabel, useErrorText } from "./ui";
 
 /** Files in one batch; they upload ten at a time. */
 const batchLimit = 50;
@@ -15,6 +17,10 @@ export function Library({
   update: (project: Project) => void;
   navigate: (view: "compose" | "channels") => void;
 }) {
+  const t = useTranslations("library");
+  const tUpload = useTranslations("upload");
+  const errorText = useErrorText();
+  const batchLabel = useBatchLabel();
   const [busy, setBusy] = useState("");
   const [percent, setPercent] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -28,7 +34,7 @@ export function Library({
     try {
       await fn();
     } catch (err) {
-      setError(message(err));
+      setError(errorText(err));
     } finally {
       setBusy("");
       setPercent(null);
@@ -41,7 +47,7 @@ export function Library({
     const key = "draft-" + project.id;
     try {
       const saved = sessionStorage.getItem(key);
-      if (saved && JSON.parse(saved).brief && !confirm("Replace your current draft with this media?")) return;
+      if (saved && JSON.parse(saved).brief && !confirm(t("replaceDraft"))) return;
       sessionStorage.setItem(
         key,
         JSON.stringify({
@@ -63,18 +69,16 @@ export function Library({
   return (
     <div className="compose-layout">
       <div className="compose-heading">
-        <h2>Media library</h2>
-        <p className="lead">
-          Upload photos and videos any time, up to {batchLimit} at once. Describe each one and captions are written for every connected channel. To turn a batch into a week of posts, use Plan week.
-        </p>
+        <h2>{t("title")}</h2>
+        <p className="lead">{t("lead", { limit: batchLimit })}</p>
       </div>
       <div className="form-panel">
         <div className="upload">
           <Icon name="upload" size={23} />
-          <UploadStatus busy={busy} percent={percent} idle="Upload a batch of photos and videos" />
-          <small>Up to {batchLimit} files: photos up to 8 MB, videos up to 40 MB each</small>
+          <UploadStatus busy={busy} percent={percent} idle={t("uploadIdle")} />
+          <small>{t("uploadHint", { limit: batchLimit })}</small>
           <input
-            aria-label="Upload media to library"
+            aria-label={t("uploadLabel")}
             type="file"
             accept={mediaAccept}
             multiple
@@ -83,14 +87,14 @@ export function Library({
               const files = Array.from(e.target.files || []);
               e.target.value = "";
               if (!files.length) return;
-              void work("Uploading…", async () => {
-                if (files.length > batchLimit) throw new Error(`Choose up to ${batchLimit} files at a time.`);
+              void work(tUpload("uploading"), async () => {
+                if (files.length > batchLimit) throw new Problem("batchLimit", 400, { limit: batchLimit });
                 let assets = project.assets;
                 await uploadBatch(
                   project.id,
                   files,
-                  (label, p) => {
-                    setBusy(label);
+                  (step, p) => {
+                    setBusy(batchLabel(step));
                     setPercent(p);
                   },
                   (added) => {
@@ -109,19 +113,22 @@ export function Library({
         )}
         {!project.channels.length && (
           <p>
-            <button className="text-button" type="button" onClick={() => navigate("channels")}>
-              Connect a channel
-            </button>{" "}
-            to generate captions.
+            {t.rich("connectForCaptions", {
+              link: (chunks) => (
+                <button className="text-button" type="button" onClick={() => navigate("channels")}>
+                  {chunks}
+                </button>
+              ),
+            })}
           </p>
         )}
         {items.length === 0 ? (
-          <p>No media yet. Uploads appear here.</p>
+          <p>{t("empty")}</p>
         ) : (
           <ul className="library-list">
             {items.map((a) => {
               const note = notes[a.id] ?? a.description ?? "";
-              const label = "Captioning " + a.id;
+              const label = "caption:" + a.id;
               return (
                 <li key={a.id} className="library-item">
                   <div className="media-grid">
@@ -129,13 +136,13 @@ export function Library({
                     <span className="filename">{a.name}</span>
                   </div>
                   <div className="draft-column">
-                    <Field label="Describe this media">
+                    <Field label={t("describe")}>
                       <textarea
                         maxLength={1000}
                         value={note}
                         disabled={!!busy}
                         onChange={(e) => setNotes({ ...notes, [a.id]: e.target.value })}
-                        placeholder="e.g. Two baristas pouring latte art at the new counter, morning light."
+                        placeholder={t("describePlaceholder")}
                       />
                     </Field>
                     <div className="actions">
@@ -156,10 +163,10 @@ export function Library({
                         }
                       >
                         <Icon name="spark" size={15} />
-                        {busy === label ? "Generating…" : a.captions ? "Regenerate captions" : "Generate captions"}
+                        {busy === label ? t("generating") : a.captions ? t("regenerate") : t("generate")}
                       </button>
                       <button type="button" className="primary" disabled={!!busy} onClick={() => startPost(a)}>
-                        Use in a post
+                        {t("usePost")}
                         <Icon name="arrow" />
                       </button>
                     </div>

@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { brandContext, initialProfile, normalizeProfile } from "../lib/brand-profile";
 import { captionRequest } from "../lib/captions";
 import type { Project } from "../lib/model";
+import { createTranslator } from "next-intl";
+import { problemText, type Problem, type Translate } from "../lib/problem";
+import en from "../messages/en.json";
+import th from "../messages/th.json";
 
 const profile = normalizeProfile(
   {
@@ -43,19 +47,27 @@ assert.equal(
   undefined,
 );
 assert.deepEqual(normalizeProfile({}, [], false), {});
-assert.throws(() => normalizeProfile({}, [], true), /brand name/i);
-assert.throws(
-  () =>
-    normalizeProfile({ brand_personality: { traits: ["1", "2", "3", "4", "5", "6"] } }, [], false),
-  /five|5/i,
-);
+// Errors carry message keys; the field they are about is translated with them.
+assert.throws(() => normalizeProfile({}, [], true), { key: "brandName" });
+const tooMany = (() => {
+  try {
+    normalizeProfile({ brand_personality: { traits: ["1", "2", "3", "4", "5", "6"] } }, [], false);
+  } catch (error) {
+    return error as Problem;
+  }
+})();
+assert.deepEqual([tooMany?.key, tooMany?.values, tooMany?.field], ["chooseUpTo", { limit: 5 }, "brand_personality.traits"]);
+const say = (locale: "en" | "th", problem: Problem) =>
+  problemText(createTranslator({ locale, messages: locale === "en" ? en : th }) as unknown as Translate, problem);
+assert.equal(say("en", tooMany!), "Personality — Choose up to 5.");
+assert.equal(say("th", tooMany!), "บุคลิก — เลือกได้สูงสุด 5 รายการ");
 assert.throws(
   () => normalizeProfile({ brand_identity: { website: "javascript:void(0)" } }, [], false),
-  /URL/,
+  { key: "publicUrl", field: "brand_identity.website" },
 );
 assert.throws(
   () => normalizeProfile({ visual_identity: { primary: "#XYZ" } }, [], false),
-  /colour/,
+  { key: "hexColour" },
 );
 // Caption prompts keep their cached prefix stable: system, then brand context, then editorial notes.
 const captionProject: Project = { id: "p", ...project, channels: ["Instagram", "TikTok"], assets: [], posts: [] };

@@ -17,13 +17,23 @@ npm run db:migrate
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Set a session signing secret in `.env.local`, then open [Hub Connect](http://localhost:3000) and choose **Create account**.
+Set a session signing secret in `.env.local`, then open [Hub Connect](http://localhost:3000) (it redirects to `/en` or `/th`) and choose **Create account**.
 
 ```dotenv
 AUTH_SECRET=at-least-32-random-characters
 ```
 
 Accounts live in Neon with scrypt-hashed passwords. Each account sees only its own projects; the first account to sign up takes over projects created before accounts existed, including ones from `npm run db:import`. Sessions last 30 days. Signing out clears the current browser; change `AUTH_SECRET` to end every session. Anyone who can reach the site can sign up. Sign-in allows 10 attempts per email and 30 per address every 15 minutes; sign-up allows 5 per address per hour. Limits are held in server memory, so they reset on restart and apply per server process. Behind a proxy, make sure it overwrites `X-Forwarded-For`, or per-address limits can be bypassed.
+
+## Languages
+
+Hub Connect is available in English (`/en`) and Thai (`/th`), built with [next-intl](https://next-intl.dev). The **EN / ไทย** switch in the header changes language and keeps the open project and tab; the choice is saved in the `NEXT_LOCALE` cookie. Visiting `/` (including Meta's return link) redirects to the saved language, otherwise the browser's language, otherwise English.
+
+- Text lives in `messages/en.json` and `messages/th.json`, with the same keys. `node scripts/check-messages.mjs` checks that every message exists in both, with the same placeholders, and parses. Message keys are type-checked against `messages/en.json`.
+- Errors from `/api/workspace` are keyed (`lib/problem.ts`) and written in the language of the page that called (the browser sends `X-Locale`). Publishing errors saved on posts carry a code, so the schedule shows them in the reader's language.
+- Dates use the page's language; Thai shows the Buddhist calendar year. Times stay in the browser's time zone.
+- Brand profile options are stored in English and shown translated, so saved profiles, the voice summary and the caption prompt (and its cache) are the same in either language. Captions follow the brand profile's primary language and the language of the brief, not the interface language.
+- Thai text uses the bundled Noto Sans Thai (SIL OFL), loaded only for Thai characters.
 
 ## Caption generation
 
@@ -95,6 +105,7 @@ Page tokens are stored encrypted in the `connections` table and never sent to th
 npm run lint
 npm run build
 node --import tsx scripts/check-brand.ts
+node scripts/check-messages.mjs
 node scripts/check-scheduler.mjs
 ```
 

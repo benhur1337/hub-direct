@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { database } from "./db";
 import { projects, users } from "./schema";
-import { check, Problem } from "./store";
+import { check, Problem } from "./problem";
 
 export const sessionCookie = "hub-session";
 export const sessionAge = 30 * 24 * 60 * 60;
@@ -19,7 +19,7 @@ export function sign(payload: string) {
 function tokenKey() {
   const key = Buffer.from(process.env.TOKEN_KEY ?? "", "base64");
   if (key.length !== 32)
-    throw new Problem("Set TOKEN_KEY (32 random bytes, base64) in .env.local and restart.", 503);
+    throw new Problem("tokenKey", 503);
   return key;
 }
 /** Encrypts a platform access token for storage. */
@@ -43,11 +43,11 @@ export const same = (a: string, b: string) =>
 
 function credentials(body: Record<string, unknown>) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  check(email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter a valid email address.");
+  check(email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "invalidEmail");
   const password = body.password;
   check(
     typeof password === "string" && password.length >= 8 && password.length <= 128,
-    "Use a password of 8 to 128 characters.",
+    "passwordLength",
   );
   return { email, password };
 }
@@ -63,7 +63,7 @@ export function limit(key: string, max: number, windowMs: number) {
   if (attempts.size > 10000)
     for (const [k, times] of attempts) if (now - times[times.length - 1] > 3600000) attempts.delete(k);
   const recent = (attempts.get(key) ?? []).filter((t) => now - t < windowMs);
-  check(recent.length < max, "Too many attempts. Wait 15 minutes and try again.", 429);
+  check(recent.length < max, "tooManyAttempts", 429);
   recent.push(now);
   attempts.set(key, recent);
 }
@@ -80,7 +80,7 @@ export async function signUp(body: Record<string, unknown>, ip: string) {
       .values({ id, email, passwordHash: stored })
       .onConflictDoNothing()
       .returning({ id: users.id });
-    check(user, "An account with this email already exists. Sign in instead.", 409);
+    check(user, "accountExists", 409);
     // The first account inherits projects created before sign-up existed.
     await tx
       .update(projects)
@@ -98,7 +98,7 @@ export async function signIn(body: Record<string, unknown>, ip: string) {
   const [salt, expected] = (user?.passwordHash ?? (await decoy)).split(":");
   const actual = (await hash(password, Buffer.from(salt, "hex"), 64)).toString("hex");
   if (!user || !same(actual, expected))
-    throw new Problem("Email or password is incorrect.", 401);
+    throw new Problem("wrongPassword", 401);
   return user.id;
 }
 

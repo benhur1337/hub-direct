@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { videoLimit, type Asset, type Platform } from "@/lib/model";
+import { Problem, problemText, type Translate } from "@/lib/problem";
 
 const paths = {
   arrow: "M4 12h15m-6-6 6 6-6 6",
@@ -67,16 +69,17 @@ export function Brand() {
   );
 }
 export function SiteFooter({ children }: { children: ReactNode }) {
+  const t = useTranslations("common");
   return (
     <footer className="site-footer wide">
       <div className="footer-signature">
         <Brand />
-        <p>One brief. Three channels.</p>
+        <p>{t("tagline")}</p>
       </div>
       <div className="footer-links">
         <nav aria-label="Footer navigation">{children}</nav>
         <a className="footer-top" href="#top">
-          Back to top <Icon name="arrow" size={15} />
+          {t("backToTop")} <Icon name="arrow" size={15} />
         </a>
       </div>
     </footer>
@@ -150,18 +153,17 @@ export const mediaAccept = "image/jpeg,image/png,image/webp,video/*";
 // iPhone MOV, WebM and videos over 40 MB become H.264 MP4 (Instagram rejects WebM and frames over 1920 px).
 export async function asMp4(file: File, onProgress?: (percent: number) => void) {
   if (!file.type.startsWith("video/") || (file.type === "video/mp4" && file.size <= videoLimit)) return file;
-  const failed = "This video could not be converted on this device. Export it as an MP4 under 40 MB and try again.";
   const { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Mp4OutputFormat, Output, Quality } =
     await import("mediabunny");
   // The reason in brackets lets a screenshot of the error say what the device could not do.
-  const fail = (reason: string) => new Error(`${failed} (${reason})`);
+  const fail = (reason: string) => new Problem("videoConvert", 400, { reason });
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
   try {
     const track = await input.getPrimaryVideoTrack();
     if (!track) throw fail("no video track");
     // Bitrate that lands under the upload limit with 10% headroom after up to 256 kbps copied audio.
     const bitrate = Math.min(6e6, (videoLimit * 8 * 0.9) / (await input.computeDuration()) - 256e3);
-    if (bitrate < 1e6) throw new Error("This video is too long to upload. Trim it to under 4 minutes and try again.");
+    if (bitrate < 1e6) throw new Problem("videoTooLong");
     const scale = Math.min(1, 1920 / Math.max(track.displayWidth, track.displayHeight));
     const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
     const conversion = await Conversion.init({
@@ -186,7 +188,7 @@ export async function asMp4(file: File, onProgress?: (percent: number) => void) 
     return new File([output.target.buffer!], file.name.replace(/\.[^.]*$/, "") + ".mp4", { type: "video/mp4" });
   } catch (error) {
     // Keep this function's own messages; decoder and encoder errors mean the device cannot convert it.
-    if (error instanceof Error && error.message.startsWith("This video")) throw error;
+    if (error instanceof Problem) throw error;
     console.error("Video conversion failed", error);
     throw fail(error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 160) : "unknown error");
   } finally {
@@ -199,7 +201,8 @@ export function forPosting(files: File[], onConvert: (percent: number) => void) 
 }
 /** Upload box label and bar while media converts or uploads. */
 export function UploadStatus({ busy, percent, idle }: { busy: string; percent: number | null; idle: string }) {
-  if (percent === null) return <span>{busy === "Uploading…" ? busy : idle}</span>;
+  const t = useTranslations("upload");
+  if (percent === null) return <span>{busy === t("uploading") ? busy : idle}</span>;
   return (
     <>
       <span>
@@ -209,8 +212,9 @@ export function UploadStatus({ busy, percent, idle }: { busy: string; percent: n
     </>
   );
 }
-export function prettyTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
+/** A date and time in the reader's time zone, written for the page's language (Thai uses the Buddhist calendar). */
+export function prettyTime(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "long",
   }).format(new Date(value));
@@ -223,12 +227,12 @@ export function localInput(date: Date) {
 export async function api(body: Record<string, unknown>) {
   const response = await fetch("/api/workspace", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    // The server writes its error messages in this language.
+    headers: { "Content-Type": "application/json", "X-Locale": document.documentElement.lang },
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok)
-    throw new Error(data.error || "The request failed. Try again.");
+  if (!response.ok) throw data.error ? new Error(data.error) : new Problem("requestFailed");
   return data;
 }
 // Files go straight to R2 through signed links: Vercel rejects function requests over 4.5 MB.
@@ -251,7 +255,7 @@ export async function uploadMedia(
     uploads.map(
       ({ asset, url }, i) =>
         new Promise<void>((resolve, reject) => {
-          const failed = () => reject(new Error("The upload did not finish. Check your connection and try again."));
+          const failed = () => reject(new Problem("uploadFailed"));
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", url);
           xhr.setRequestHeader("Content-Type", asset.type);
@@ -274,10 +278,11 @@ const uploadChunk = 10;
  * Uploads any number of library files in groups of ten, converting each first. Each
  * group is saved before the next starts, so a failure keeps everything already uploaded.
  */
+export type BatchStep = { step: "converting"; file: number; total: number } | { step: "uploading"; from: number; to: number; total: number };
 export async function uploadBatch(
   project: string,
   files: File[],
-  onStatus: (label: string, percent: number | null) => void,
+  onStatus: (status: BatchStep, percent: number | null) => void,
   onAdded: (assets: Asset[]) => void,
 ) {
   let done = 0;
@@ -288,21 +293,38 @@ export async function uploadBatch(
     for (const file of group)
       ready.push(
         await asMp4(await asJpeg(file), (p) =>
-          onStatus(`Converting video ${start + ready.length + 1} of ${files.length}…`, p),
+          onStatus({ step: "converting", file: start + ready.length + 1, total: files.length }, p),
         ),
       );
-    onStatus(`Uploading ${done + 1}–${done + group.length} of ${files.length}…`, 0);
+    const uploading = { step: "uploading", from: done + 1, to: done + group.length, total: files.length } as const;
+    onStatus(uploading, 0);
     try {
-      const added = await uploadMedia(project, ready, { purpose: "library" }, (p) =>
-        onStatus(`Uploading ${done + 1}–${done + group.length} of ${files.length}…`, p),
-      );
+      const added = await uploadMedia(project, ready, { purpose: "library" }, (p) => onStatus(uploading, p));
       done += added.length;
       onAdded(added);
     } catch (error) {
       if (!done) throw error;
-      throw new Error(`Uploaded ${done} of ${files.length} files. ${message(error)}`);
+      throw new PartialUpload(done, files.length, error);
     }
   }
+}
+/** Some groups of a batch were saved before one failed. */
+export class PartialUpload extends Error {
+  constructor(
+    readonly done: number,
+    readonly total: number,
+    readonly cause: unknown,
+  ) {
+    super("Partial upload");
+  }
+}
+/** Label for an upload batch's progress. */
+export function useBatchLabel() {
+  const t = useTranslations("upload");
+  return (s: BatchStep) =>
+    s.step === "converting"
+      ? t("convertingOf", { file: s.file, total: s.total })
+      : t("uploadingOf", { from: s.from, to: s.to, total: s.total });
 }
 /**
  * Runs caption requests so they share the prompt cache: the first one runs alone and
@@ -322,10 +344,18 @@ export async function cachedBatch(jobs: (() => Promise<unknown>)[], limit = 4) {
   await Promise.all(Array.from({ length: Math.min(limit, jobs.length - 1) }, worker));
   return results;
 }
-export function message(error: unknown) {
-  return error instanceof TypeError
-    ? "Could not reach the workspace. Check your connection and try again."
-    : error instanceof Error
-      ? error.message
-      : "Something went wrong. Try again.";
+/** Turns any error into text in the page's language. */
+export function useErrorText() {
+  const t = useTranslations() as unknown as Translate;
+  const text = (error: unknown): string =>
+    error instanceof Problem
+      ? problemText(t, error)
+      : error instanceof PartialUpload
+        ? t("errors.uploadedSome", { done: error.done, total: error.total, reason: text(error.cause) })
+        : error instanceof TypeError
+          ? t("errors.offline")
+          : error instanceof Error
+            ? error.message
+            : t("errors.unknown");
+  return text;
 }

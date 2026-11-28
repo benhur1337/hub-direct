@@ -16,31 +16,15 @@ import {
   type Post,
 } from "./model";
 import { seal } from "./auth";
+import { check, Problem, type ErrorValues, type LabelKey } from "./problem";
 import { brandSummary, normalizeProfile } from "./brand-profile";
 import { sections as brandSections } from "./brand-fields";
 
 const uuid =
   /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
-export class Problem extends Error {
-  constructor(
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
-}
-export function check(
-  value: unknown,
-  message: string,
-  status = 400,
-): asserts value {
-  if (!value) throw new Problem(message, status);
-}
-export function field(value: unknown, label: string, max: number) {
-  check(
-    typeof value === "string" && value.trim() && value.length <= max,
-    `Enter ${label} (up to ${max} characters).`,
-  );
+export { check, Problem };
+export function field(value: unknown, label: LabelKey, max: number, values: ErrorValues = {}) {
+  check(typeof value === "string" && value.trim() && value.length <= max, "enterField", 400, { ...values, label, max });
   return value.trim();
 }
 type Change = (
@@ -51,7 +35,7 @@ type Change = (
 function withProject(owner: string, id: string, change?: Change) {
   check(
     typeof id === "string" && uuid.test(id),
-    "Choose an existing project.",
+    "chooseProject",
     404,
   );
   return locked(and(eq(projects.id, id), eq(projects.userId, owner))!, change);
@@ -67,7 +51,7 @@ function locked(where: SQL, change?: Change) {
       .from(projects)
       .where(where)
       .for("update");
-    check(project, "Project unavailable. Choose another project.", 404);
+    check(project, "projectUnavailable", 404);
     const delivered = deliverDue(project);
     if (change) await change(project, tx);
     if (delivered || change) {
@@ -81,22 +65,22 @@ function locked(where: SQL, change?: Change) {
   });
 }
 export async function createProject(owner: string, body: Record<string, unknown>) {
-  const name = field(body.name, "a project name", 100);
+  const name = field(body.name, "projectName", 100);
   const sections = [
-    ["description", "Brand description"],
-    ["audience", "Audience"],
-    ["tone", "Tone"],
-    ["example", "Example copy"],
-    ["avoid", "Words to avoid"],
+    ["description", "Brand description", "brandDescription"],
+    ["audience", "Audience", "audience"],
+    ["tone", "Tone", "tone"],
+    ["example", "Example copy", "exampleCopy"],
+    ["avoid", "Words to avoid", "wordsToAvoid"],
   ] as const;
   let voice = "# " + name + "\n";
-  for (const [key, title] of sections) {
+  for (const [key, title, label] of sections) {
     if (!body[key]) continue;
     voice +=
       "\n## " +
       title +
       "\n" +
-      field(body[key], title.toLowerCase(), 3000) +
+      field(body[key], label, 3000) +
       "\n";
   }
   const project: Project = {
@@ -112,12 +96,12 @@ export async function createProject(owner: string, body: Record<string, unknown>
 }
 // Neon is the source of truth: drop the row first so a failed R2 cleanup only leaves orphans, never broken links.
 export async function deleteProject(owner: string, id: unknown) {
-  check(typeof id === "string" && uuid.test(id), "Choose an existing project.", 404);
+  check(typeof id === "string" && uuid.test(id), "chooseProject", 404);
   const [removed] = await database()
     .delete(projects)
     .where(and(eq(projects.id, id), eq(projects.userId, owner)))
     .returning({ assets: projects.assets });
-  check(removed, "Project unavailable. Refresh the workspace.", 404);
+  check(removed, "projectGone", 404);
   const results = await Promise.allSettled(
     removed.assets.map((asset) => deleteFile(id, asset.id)),
   );
@@ -150,22 +134,22 @@ export async function workspace(owner: string) {
 }
 export function selectPlatform(value: unknown) {
   const platform = platforms.find((p) => p === value);
-  check(platform, "Select a supported destination.");
+  check(platform, "unsupportedDestination");
   return platform;
 }
 export function mediaList(project: Project, ids: unknown): Asset[] {
   check(
     Array.isArray(ids) && ids.length <= 10 && new Set(ids).size === ids.length,
-    "Choose up to ten different photos or one video.",
+    "mediaLimit",
   );
   const assets = ids.map((id) => {
     const asset = project.assets.find((a) => a.id === id);
-    check(asset && allowedTypes.includes(asset.type), "Choose photos or videos uploaded to this project.");
+    check(asset && allowedTypes.includes(asset.type), "mediaNotInProject");
     return asset;
   });
   check(
     !assets.some((a) => a.type.startsWith("video/")) || assets.length === 1,
-    "Use one video on its own, or choose photos.",
+    "videoAlone",
   );
   return assets;
 }
@@ -180,7 +164,7 @@ export async function assetData(project: Project, asset: Asset) {
     throw error;
   }
   const data = await legacyAsset(project, asset);
-  check(data, "This attachment is unavailable.", 404);
+  check(data, "attachmentUnavailable", 404);
   return data;
 }
 
@@ -237,7 +221,7 @@ export function describeAsset(
 ) {
   return withProject(owner, id, (project) => {
     const asset = project.assets.find((a) => a.id === assetId);
-    check(asset && allowedTypes.includes(asset.type), "This media is no longer in the library.", 404);
+    check(asset && allowedTypes.includes(asset.type), "mediaRemoved", 404);
     asset.description = description;
     asset.captions = captions;
   });
@@ -247,7 +231,7 @@ function future(value: unknown) {
     typeof value === "string" &&
       Number.isFinite(Date.parse(value)) &&
       Date.parse(value) > Date.now(),
-    "Choose a date and time in the future.",
+    "futureTime",
   );
   return new Date(value).toISOString();
 }
@@ -284,7 +268,7 @@ export async function sharedAsset(projectId: string, assetId: string) {
     .from(projects)
     .where(eq(projects.id, projectId));
   const asset = row?.assets.find((a) => a.id === assetId);
-  check(row && asset, "This attachment is unavailable.", 404);
+  check(row && asset, "attachmentUnavailable", 404);
   return { project: row as Project, asset };
 }
 
@@ -292,10 +276,10 @@ function applyAction(project: Project, body: Record<string, unknown>) {
   switch (body.action) {
     case "brand": {
       const revision = project.brand?.revision ?? 0;
-      check(body.revision === revision, "This profile changed in another tab. Reopen Brand voice before saving.", 409);
-      check(body.status === "draft" || body.status === "completed", "Choose a valid profile status.");
+      check(body.revision === revision, "profileChanged", 409);
+      check(body.status === "draft" || body.status === "completed", "profileStatus");
       const step = body.step;
-      check(typeof step === "number" && Number.isInteger(step) && step >= 0 && step <= brandSections.length, "Choose a valid onboarding step.");
+      check(typeof step === "number" && Number.isInteger(step) && step >= 0 && step <= brandSections.length, "onboardingStep");
       const completed = body.status === "completed";
       const profile = normalizeProfile(body.profile, project.assets, completed);
       if (completed) {
@@ -307,7 +291,7 @@ function applyAction(project: Project, body: Record<string, unknown>) {
       return;
     }
     case "voice":
-      project.voice = field(body.voice, "your brand voice", 24000);
+      project.voice = field(body.voice, "brandVoice", 24000);
       if (project.brand) {
         for (const profile of [project.brand.completed, project.brand.draft]) {
           if (profile) (profile.brand_voice ??= {}).previous = project.voice;
@@ -327,13 +311,13 @@ function applyAction(project: Project, body: Record<string, unknown>) {
       break;
     }
     case "schedule": {
-      const brief = field(body.brief, "a post brief", 4000);
+      const brief = field(body.brief, "postBrief", 4000);
       const media = mediaList(project, body.media).map((a) => a.id);
       check(
         body.captions &&
           typeof body.captions === "object" &&
           !Array.isArray(body.captions),
-        "Choose at least one connected destination.",
+        "chooseDestination",
       );
       const destinations: Post["destinations"] = Object.entries(
         body.captions,
@@ -341,7 +325,7 @@ function applyAction(project: Project, body: Record<string, unknown>) {
         const platform = selectPlatform(key);
         check(
           project.channels.includes(platform),
-          "Connect the selected channel first.",
+          "connectChannelFirst",
         );
         const auto = !!project.linked?.[platform];
         if (auto && platform === "Instagram")
@@ -350,23 +334,23 @@ function applyAction(project: Project, body: Record<string, unknown>) {
               media.every((id) =>
                 ["image/jpeg", "video/mp4"].includes(project.assets.find((a) => a.id === id)!.type),
               ),
-            "Instagram publishing needs JPEG photos or one MP4 video. Change the media or remove Instagram.",
+            "instagramMedia",
           );
         return {
           platform,
-          caption: field(value, "a caption for " + platform, 6000),
+          caption: field(value, "caption", 6000, { platform }),
           status: "Scheduled",
           ...(auto ? { auto } : {}),
         };
       });
-      check(destinations.length, "Choose at least one connected destination.");
+      check(destinations.length, "chooseDestination");
       // The draft ID makes confirmation safe to retry after a lost response.
       check(
         typeof body.draftId === "string" && uuid.test(body.draftId),
-        "Reopen the composer and try again.",
+        "reopenComposer",
       );
       if (project.posts.some((post) => post.id === body.draftId)) return;
-      const note = body.note === undefined || body.note === "" ? undefined : field(body.note, "an editorial note", noteLength);
+      const note = body.note === undefined || body.note === "" ? undefined : field(body.note, "editorialNote", noteLength);
       project.posts.push({
         id: body.draftId,
         when: future(body.when),
@@ -388,10 +372,10 @@ function applyAction(project: Project, body: Record<string, unknown>) {
     case "cancel":
     case "reschedule": {
       const post = project.posts.find((p) => p.id === body.postId);
-      check(post, "Choose an existing post.", 404);
+      check(post, "choosePost", 404);
       check(
         post.destinations.every((d) => d.status === "Scheduled"),
-        "This post is already closed. Refresh the schedule.",
+        "postClosed",
         409,
       );
       if (body.action === "reschedule") post.when = future(body.when);
@@ -402,7 +386,7 @@ function applyAction(project: Project, body: Record<string, unknown>) {
       break;
     }
     default:
-      throw new Problem("Choose a supported workspace action.");
+      throw new Problem("unsupportedAction");
   }
   project.posts.sort((a, b) => a.when.localeCompare(b.when));
 }
@@ -410,21 +394,23 @@ function applyAction(project: Project, body: Record<string, unknown>) {
 /** Saves editorial feedback with the brand voice; caption requests send it with the brand context. */
 function addNote(project: Project, body: Record<string, unknown>) {
   // The browser picks the ID, so a retried request after a lost response adds the note once.
-  check(typeof body.noteId === "string" && uuid.test(body.noteId), "Reopen the note and try again.");
+  check(typeof body.noteId === "string" && uuid.test(body.noteId), "reopenNote");
   if (project.editorial?.some((n) => n.id === body.noteId)) return;
-  const text = field(body.text, "an editorial note", noteLength);
+  const text = field(body.text, "editorialNote", noteLength);
   check(
     (project.editorial?.length ?? 0) < noteLimit,
-    `Keep up to ${noteLimit} editorial notes. Remove an older one in Brand voice first.`,
+    "tooManyNotes",
+    400,
+    { limit: noteLimit },
   );
   const note: EditorialNote = { id: body.noteId, text, at: new Date().toISOString() };
   if (body.postId !== undefined) {
     const post = project.posts.find((p) => p.id === body.postId);
-    check(post, "Choose an existing post.", 404);
+    check(post, "choosePost", 404);
     note.postId = post.id;
     if (body.platform !== undefined && body.platform !== "") {
       const dest = post.destinations.find((d) => d.platform === selectPlatform(body.platform));
-      check(dest, "Choose a destination of this post.");
+      check(dest, "noteDestination");
       note.platform = dest.platform;
       note.caption = dest.caption.slice(0, 280);
     }

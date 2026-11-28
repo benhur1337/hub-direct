@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion, MotionConfig } from "motion/react";
+import { useLocale, useTranslations } from "next-intl";
 import { Landing } from "./landing";
 import { platforms, type Project } from "@/lib/model";
 import {
@@ -8,11 +9,12 @@ import {
   Brand,
   Field,
   Icon,
-  message,
   PlatformMark,
   prettyTime,
   SiteFooter,
+  useErrorText,
 } from "./ui";
+import { LanguageSwitch } from "./language-switch";
 import { BrandWizard } from "./brand-wizard";
 import { Composer } from "./composer";
 import { Schedule } from "./schedule";
@@ -30,49 +32,55 @@ type View =
   | "voice"
   | "channels";
 const tabs = [
-  ["schedule", "Schedule", "calendar"],
-  ["compose", "Compose", "compose"],
-  ["plan", "Plan week", "week"],
-  ["library", "Library", "upload"],
-  ["voice", "Brand voice", "voice"],
-  ["channels", "Channels", "link"],
+  ["schedule", "calendar"],
+  ["compose", "compose"],
+  ["plan", "week"],
+  ["library", "upload"],
+  ["voice", "voice"],
+  ["channels", "link"],
 ] as const;
+const views = ["overview", "create", ...tabs.map(([key]) => key)] as const;
 
 const subscribeToHydration = () => () => {};
-// Results of Meta login, passed back as codes by app/api/meta/route.ts.
-const metaMessages: Record<string, string> = {
-  denied: "Facebook login was canceled. Connect again to publish automatically.",
-  pages: "Choose exactly one Facebook Page when you connect, then try again.",
-  setup: "Automatic publishing isn’t set up on this server yet (META_APP_ID, META_APP_SECRET, APP_URL).",
-  failed: "Facebook couldn’t be connected. Try again; if it keeps failing, the server log shows the reason under “Meta login failed”.",
-  expired: "That Facebook login couldn’t be matched to this browser. Start Connect again from this same web address, within 10 minutes.",
-};
+// Results of Meta login, passed back as codes by app/api/meta/route.ts; texts are metaLogin.* messages.
+const metaResults = ["denied", "pages", "setup", "failed", "expired"] as const;
 
 export function Desk({
   signedIn,
   initialProjects,
   metaReturn: returned,
+  reopen,
 }: {
   signedIn: boolean;
   initialProjects: Project[];
   /** Set when Meta login redirects back to a project. */
   metaReturn?: { project: string; result: string };
+  /** The screen that was open before switching language. */
+  reopen?: { project: string; view: string };
 }) {
+  const t = useTranslations("workspace");
+  const tTabs = useTranslations("tabs");
+  const tMeta = useTranslations("metaLogin");
+  const errorText = useErrorText();
+  const locale = useLocale();
   const [projects, setProjects] = useState(initialProjects);
   const metaReturn = initialProjects.some((p) => p.id === returned?.project) ? returned : undefined;
+  const reopened = initialProjects.some((p) => p.id === reopen?.project)
+    ? views.find((v) => v === reopen?.view)
+    : undefined;
   const showLocalTime = useSyncExternalStore(
     subscribeToHydration,
     () => true,
     () => false,
   );
   const [view, setView] = useState<View>(
-    metaReturn ? "channels" : initialProjects.length ? "overview" : "create",
+    metaReturn ? "channels" : reopened ?? (initialProjects.length ? "overview" : "create"),
   );
-  const [id, setId] = useState(metaReturn?.project ?? "");
+  const [id, setId] = useState(metaReturn?.project ?? (reopened ? reopen!.project : ""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(
     metaReturn && metaReturn.result !== "linked"
-      ? (metaMessages[metaReturn.result] ?? metaMessages.failed)
+      ? tMeta(metaResults.find((r) => r === metaReturn.result) ?? "failed")
       : "",
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -100,7 +108,7 @@ export function Desk({
     try {
       await work();
     } catch (err) {
-      setError(message(err));
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
@@ -121,8 +129,7 @@ export function Desk({
       const revision = version.current;
       try {
         const result = await fetch("/api/workspace", { cache: "no-store" });
-        if (!result.ok)
-          throw new Error("Could not refresh the schedule. Retrying shortly.");
+        if (!result.ok) throw new Error(t("refreshFailed"));
         const data = await result.json();
         if (!active || revision !== version.current) return;
         if (!data.signedIn) {
@@ -131,7 +138,7 @@ export function Desk({
         }
         setProjects(data.projects);
       } catch (err) {
-        if (active) setError(message(err));
+        if (active) setError(errorText(err));
       } finally {
         loading = false;
       }
@@ -144,10 +151,13 @@ export function Desk({
       clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
+    // errorText and t change with the language, which remounts the page anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, view, id]);
   useEffect(() => {
-    if (returned) window.history.replaceState(null, "", "/");
-  }, [returned]);
+    // Drop one-off query parameters (Meta's result, the screen to reopen) from the address.
+    if (returned || reopen) window.history.replaceState(null, "", window.location.pathname);
+  }, [returned, reopen]);
   if (!signedIn) {
     return <Landing busy={busy} error={error} enter={session} />;
   }
@@ -167,22 +177,24 @@ export function Desk({
           <button
             className="mast-brand"
             onClick={() => go(projects.length ? "overview" : "create")}
-            aria-label="Hub Connect workspace"
+            aria-label={t("home")}
           >
             <Brand />
           </button>
-          <nav aria-label="Workspace navigation">
-            <button onClick={() => go("overview")} aria-current={view === "overview" ? "page" : undefined}>Projects</button>
-            <button onClick={() => go("create")} aria-current={view === "create" ? "page" : undefined}>New project</button>
+          <nav aria-label={t("navigation")}>
+            <button onClick={() => go("overview")} aria-current={view === "overview" ? "page" : undefined}>{t("projects")}</button>
+            <button onClick={() => go("create")} aria-current={view === "create" ? "page" : undefined}>{t("newProject")}</button>
           </nav>
-          <button
-            className="mast-action"
-            disabled={busy}
-            onClick={() => session({ action: "signout" })}
-            aria-label="Sign out"
-          >
-            Sign out <Icon name="exit" size={16} />
-          </button>
+          <div className="mast-end">
+            <LanguageSwitch query={id && view !== "overview" && view !== "create" ? { project: id, view } : undefined} />
+            <button
+              className="mast-action sign-out"
+              disabled={busy}
+              onClick={() => session({ action: "signout" })}
+            >
+              <span className="mast-label">{t("signOut")}</span> <Icon name="exit" size={16} />
+            </button>
+          </div>
         </div>
       </header>
       <main className="desk wide" data-view={view} key={id}>
@@ -194,15 +206,15 @@ export function Desk({
         {view === "overview" ? (
           <>
             <div className="title-row">
-              <h1>Workspace</h1>
+              <h1>{t("title")}</h1>
               <button className="primary" onClick={() => go("create")}>
                 <Icon name="plus" />
-                New project
+                {t("newProject")}
               </button>
             </div>
             <div className="overview-lists">
               <section>
-                <h2><Icon name="folder" />Projects <span className="count">{projects.length}</span></h2>
+                <h2><Icon name="folder" />{t("projects")} <span className="count">{projects.length}</span></h2>
                 <div className="project-list">
                   {projects.map((p) => (
                     <button
@@ -216,9 +228,10 @@ export function Desk({
                       <span>
                         <strong>{p.name}</strong>
                         <small>
-                          {p.channels.length}{" "}
-                          {p.channels.length === 1 ? "channel" : "channels"} ·{" "}
-                          {upcoming.filter((u) => u.project.id === p.id).length} upcoming
+                          {t("projectSummary", {
+                            channels: p.channels.length,
+                            upcoming: upcoming.filter((u) => u.project.id === p.id).length,
+                          })}
                         </small>
                       </span>
                       <Icon name="chevron" />
@@ -227,7 +240,7 @@ export function Desk({
                 </div>
               </section>
               <section>
-                <h2><Icon name="calendar" />Upcoming posts <span className="count">{upcoming.length}</span></h2>
+                <h2><Icon name="calendar" />{t("upcomingPosts")} <span className="count">{upcoming.length}</span></h2>
                 {upcoming.length ? (
                   <div className="agenda-list">
                     {upcoming.map(({ project, post }) => (
@@ -237,7 +250,7 @@ export function Desk({
                         onClick={() => go("schedule", project.id)}
                       >
                         <time dateTime={post.when}>
-                          {showLocalTime ? prettyTime(post.when) : post.when}
+                          {showLocalTime ? prettyTime(post.when, locale) : post.when}
                         </time>
                         <span>
                           <strong>{post.brief}</strong>
@@ -248,9 +261,7 @@ export function Desk({
                     ))}
                   </div>
                 ) : (
-                  <p className="empty">
-                    Scheduled posts from your projects will appear here.
-                  </p>
+                  <p className="empty">{t("upcomingEmpty")}</p>
                 )}
               </section>
             </div>
@@ -263,19 +274,13 @@ export function Desk({
               onClick={() => go("overview")}
             >
               <Icon name="back" />
-              Workspace
+              {t("title")}
             </button>
             <div className="form-layout">
               <div>
                 <span className="desk-mark"><Icon name="folder" size={22} /></span>
-                <h1>
-                  {projects.length
-                    ? "Create a project"
-                    : "Create your first project"}
-                </h1>
-                <p className="lead">
-                  Start with a name. You can add brand guidelines next or return to them later.
-                </p>
+                <h1>{projects.length ? t("createProject") : t("createFirstProject")}</h1>
+                <p className="lead">{t("createLead")}</p>
               </div>
               <form
                 className="form-panel"
@@ -292,17 +297,17 @@ export function Desk({
                 }}
               >
                 <div className="project-fields">
-                  <Field label="Project name">
+                  <Field label={t("projectName")}>
                     <input
                       name="name"
                       required
                       maxLength={100}
-                      placeholder="e.g. Sunday Studio"
+                      placeholder={t("projectNamePlaceholder")}
                     />
                   </Field>
                 </div>
                 <button className="primary" disabled={busy}>
-                  {busy ? "Creating…" : "Create project"}
+                  {busy ? t("creating") : t("createButton")}
                   <Icon name="arrow" />
                 </button>
               </form>
@@ -313,14 +318,14 @@ export function Desk({
             <MotionConfig reducedMotion="user" transition={{ duration: .22, ease: "easeOut" }}>
               <button className="back" onClick={() => go("overview")}>
                 <Icon name="back" />
-                Workspace
+                {t("title")}
               </button>
               <div className="title-row project-title">
                 <h1>{current.name}</h1>
                 <div className="project-tools">
                 {projects.length > 1 && (
                   <label className="switch-project">
-                    Switch project
+                    {t("switchProject")}
                     <select
                       value={id}
                       onChange={(e) => go(view, e.target.value)}
@@ -339,16 +344,15 @@ export function Desk({
                   onClick={() => setConfirmDelete(true)}
                 >
                   <Icon name="trash" size={16} />
-                  Delete project
+                  {t("deleteProject")}
                 </button>
                 </div>
               </div>
               {confirmDelete && (
                 <div className="confirm-delete" role="alertdialog" aria-labelledby="delete-title">
                   <p id="delete-title">
-                    <strong>Delete {current.name}?</strong> This removes its brand voice,{" "}
-                    {current.posts.length} {current.posts.length === 1 ? "post" : "posts"}, and{" "}
-                    {current.assets.length} uploaded {current.assets.length === 1 ? "file" : "files"}. This cannot be undone.
+                    <strong>{t("deleteTitle", { name: current.name })}</strong>{" "}
+                    {t("deleteBody", { posts: current.posts.length, files: current.assets.length })}
                   </p>
                   <div className="actions">
                     <button
@@ -368,7 +372,7 @@ export function Desk({
                         })
                       }
                     >
-                      {busy ? "Deleting…" : "Delete permanently"}
+                      {busy ? t("deleting") : t("deletePermanently")}
                     </button>
                     <button
                       className="secondary"
@@ -376,20 +380,20 @@ export function Desk({
                       autoFocus
                       onClick={() => setConfirmDelete(false)}
                     >
-                      Keep project
+                      {t("keepProject")}
                     </button>
                   </div>
                 </div>
               )}
-              <nav className="tabs" aria-label="Project navigation">
-                {tabs.map(([key, label, icon]) => (
+              <nav className="tabs" aria-label={t("projectNavigation")}>
+                {tabs.map(([key, icon]) => (
                   <button
                     key={key}
                     aria-current={view === key ? "page" : undefined}
                     onClick={() => go(key)}
                   >
                     <Icon name={icon} />
-                    {label}
+                    {tTabs(key)}
                     {view === key && <motion.span aria-hidden="true" className="tab-outline" layoutId="project-tab" />}
                   </button>
                 ))}
@@ -398,10 +402,8 @@ export function Desk({
                 <div className="form-layout">
                   <div>
                     <span className="desk-mark"><Icon name="link" size={22} /></span>
-                    <h2>Connected channels</h2>
-                    <p className="lead">
-                      Connect Facebook to publish to its Page and linked Instagram account automatically. TikTok posts stay in your plan for you to publish.
-                    </p>
+                    <h2>{t("channelsTitle")}</h2>
+                    <p className="lead">{t("channelsLead")}</p>
                   </div>
                   <div className="form-panel">
                     {platforms.map((p) => (
@@ -423,17 +425,17 @@ export function Desk({
                                 )
                               }
                             >
-                              Disconnect
+                              {t("disconnect")}
                             </button>
                           </>
                         ) : p !== "TikTok" ? (
                           <a className="secondary" href={"/api/meta?project=" + id}>
-                            {p === "Instagram" ? "Connect through Facebook" : "Connect"}
+                            {p === "Instagram" ? t("connectThroughFacebook") : t("connect")}
                           </a>
                         ) : current.channels.includes(p) ? (
                           <span className="connected">
                             <Icon name="check" size={15} />
-                            Connected
+                            {t("connected")}
                           </span>
                         ) : (
                           <button
@@ -453,7 +455,7 @@ export function Desk({
                               )
                             }
                           >
-                            Connect
+                            {t("connect")}
                           </button>
                         )}
                       </div>
@@ -463,7 +465,7 @@ export function Desk({
                         className="primary"
                         onClick={() => go("compose")}
                       >
-                        Compose a post
+                        {t("composePost")}
                         <Icon name="arrow" />
                       </button>
                     )}
@@ -503,9 +505,9 @@ export function Desk({
         )}
       </main>
       <SiteFooter>
-        <button onClick={() => go("overview")}>Projects</button>
-        <button onClick={() => go("create")}>New project</button>
-        {current && <button onClick={() => go("schedule")}>Project schedule</button>}
+        <button onClick={() => go("overview")}>{t("projects")}</button>
+        <button onClick={() => go("create")}>{t("newProject")}</button>
+        {current && <button onClick={() => go("schedule")}>{t("projectSchedule")}</button>}
       </SiteFooter>
     </div>
   );
