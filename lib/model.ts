@@ -18,7 +18,10 @@ export type Destination = {
   auto?: boolean;
   container?: string;
   url?: string;
+  /** English text, kept for older posts; the schedule shows `errorCode` in the reader's language when set. */
   error?: string;
+  /** reconnect: Meta revoked access; failed: unknown failure; processing: Instagram rejected the media (`error` has its status). */
+  errorCode?: "reconnect" | "failed" | "processing";
 };
 export type Post = {
   id: string;

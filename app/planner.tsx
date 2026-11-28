@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { platforms, type Asset, type Platform, type Post, type Project } from "@/lib/model";
+import { Problem, type ErrorKey } from "@/lib/problem";
 import {
   api,
   cachedBatch,
@@ -10,12 +12,13 @@ import {
   localInput,
   Media,
   mediaAccept,
-  message,
   PlatformMark,
   prettyTime,
   uploadBatch,
   uploadMedia,
   UploadStatus,
+  useBatchLabel,
+  useErrorText,
 } from "./ui";
 
 /** A queued post. `when` is a local datetime-local value, like the composer's. */
@@ -55,15 +58,14 @@ function readSaved(project: Project): Saved {
 function blank(project: Project, when: string, media: string[] = []): Plan {
   return { id: crypto.randomUUID(), brief: "", media, mediaDescription: "", selected: [...project.channels], captions: {}, when };
 }
-/** What still stops a queued post from being scheduled, or "" when it is ready. */
-function problem(d: Plan) {
+/** What still stops a queued post from being scheduled (an errors.* key), or undefined when it is ready. */
+function problem(d: Plan): ErrorKey | undefined {
   const date = new Date(d.when);
-  if (!d.brief.trim()) return "Add a brief.";
-  if (!d.selected.length) return "Choose a destination.";
-  if (d.selected.some((p) => !d.captions[p]?.trim())) return "Add a caption for each destination.";
-  if (!(date.getTime() > Date.now())) return "Choose a time in the future.";
-  if (localInput(date) !== d.when) return "This local time falls in a clock change. Choose another time.";
-  return "";
+  if (!d.brief.trim()) return "addBrief";
+  if (!d.selected.length) return "selectDestination";
+  if (d.selected.some((p) => !d.captions[p]?.trim())) return "addCaptions";
+  if (!(date.getTime() > Date.now())) return "futureTime";
+  if (localInput(date) !== d.when) return "clockChange";
 }
 const canGenerate = (d: Plan) => !!d.brief.trim() && (!d.media.length || !!d.mediaDescription.trim());
 
@@ -76,6 +78,11 @@ export function Planner({
   update: (project: Project) => void;
   navigate: (view: "channels" | "schedule") => void;
 }) {
+  const t = useTranslations("planner");
+  const tUpload = useTranslations("upload");
+  const locale = useLocale();
+  const errorText = useErrorText();
+  const batchLabel = useBatchLabel();
   const [saved] = useState(() => readSaved(project));
   const [drafts, setDrafts] = useState(saved.drafts);
   const [time, setTime] = useState(saved.time);
@@ -85,6 +92,8 @@ export function Planner({
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [confirming, setConfirming] = useState<string[] | null>(null);
+  // Offers a link to the schedule after posts are scheduled.
+  const [scheduledNote, setScheduledNote] = useState(false);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   useEffect(() => {
     try {
@@ -102,15 +111,17 @@ export function Planner({
     setDrafts((all) => all.map((d) => (d.id === id ? { ...d, ...values, error: undefined } : d)));
     setError("");
     setStatus("");
+    setScheduledNote(false);
   }
   async function work(label: string, fn: () => Promise<void>) {
     setBusy(label);
     setError("");
     setStatus("");
+    setScheduledNote(false);
     try {
       await fn();
     } catch (err) {
-      setError(message(err));
+      setError(errorText(err));
     } finally {
       setBusy("");
       setPercent(null);
@@ -144,7 +155,7 @@ export function Planner({
       // Keep each caption as it lands so one failure does not discard the rest.
       setDrafts((all) => all.map((x) => (x.id === d.id ? { ...x, captions: { ...x.captions, [p]: data.caption } } : x)));
     } catch (err) {
-      setDrafts((all) => all.map((x) => (x.id === d.id ? { ...x, error: message(err) } : x)));
+      setDrafts((all) => all.map((x) => (x.id === d.id ? { ...x, error: errorText(err) } : x)));
       throw err;
     }
   }
@@ -157,8 +168,8 @@ export function Planner({
   async function generateAll(list: Plan[], all = false) {
     const results = await cachedBatch(captionJobs(list, all));
     const failed = results.filter((r) => r.status === "rejected").length;
-    if (failed) throw new Error(`${failed} of ${results.length} captions could not be generated. Retry or edit them below.`);
-    setStatus(`Generated ${results.length} ${results.length === 1 ? "caption" : "captions"}.`);
+    if (failed) throw new Problem("captionsFailed", 400, { failed, total: results.length });
+    setStatus(t("generated", { count: results.length }));
   }
   async function scheduleAll(ids: string[]) {
     let scheduled = 0;
@@ -179,22 +190,22 @@ export function Planner({
         setDrafts((all) => all.filter((x) => x.id !== id));
         scheduled++;
       } catch (err) {
-        setDrafts((all) => all.map((x) => (x.id === id ? { ...x, error: message(err) } : x)));
+        setDrafts((all) => all.map((x) => (x.id === id ? { ...x, error: errorText(err) } : x)));
       }
     }
     setConfirming(null);
-    if (scheduled < ids.length)
-      throw new Error(`Scheduled ${scheduled} of ${ids.length} posts. The rest show what to fix.`);
-    setStatus(`Scheduled ${scheduled} ${scheduled === 1 ? "post" : "posts"}.`);
+    if (scheduled < ids.length) throw new Problem("scheduledSome", 400, { done: scheduled, total: ids.length });
+    setStatus(t("scheduled", { count: scheduled }));
+    setScheduledNote(true);
   }
 
   if (!project.channels.length)
     return (
       <section className="compose-intro">
-        <h2>Plan the week</h2>
-        <p>Connect a channel to start queueing posts.</p>
+        <h2>{t("title")}</h2>
+        <p>{t("noChannels")}</p>
         <button className="primary" onClick={() => navigate("channels")}>
-          Connect channels
+          {t("connectChannels")}
           <Icon name="arrow" />
         </button>
       </section>
@@ -204,24 +215,21 @@ export function Planner({
   const waiting = drafts.filter((d) => !canGenerate(d) && d.selected.some((p) => !d.captions[p]?.trim())).length;
   const ready = drafts.filter((d) => !problem(d));
   const confirmList = confirming && drafts.filter((d) => confirming.includes(d.id));
-  const range = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).formatRange(days[0], days[6]);
+  const range = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).formatRange(days[0], days[6]);
 
   return (
     <div className="planner">
       <div className="compose-heading">
-        <h2>Plan the week</h2>
-        <p className="lead">
-          Upload a batch of media and each file becomes a post on the next open day. Write a brief for each, generate every
-          caption at once, then schedule the lot.
-        </p>
+        <h2>{t("title")}</h2>
+        <p className="lead">{t("lead")}</p>
       </div>
       <div className="form-panel plan-tools">
         <div className="upload">
           <Icon name="upload" size={23} />
-          <UploadStatus busy={busy} percent={percent} idle="Upload a batch: one post per file" />
-          <small>Up to {batchLimit} photos or videos. They also stay in the library.</small>
+          <UploadStatus busy={busy} percent={percent} idle={t("uploadIdle")} />
+          <small>{t("uploadHint", { limit: batchLimit })}</small>
           <input
-            aria-label="Upload a batch of media"
+            aria-label={t("uploadLabel")}
             type="file"
             accept={mediaAccept}
             multiple
@@ -230,14 +238,14 @@ export function Planner({
               const files = Array.from(e.target.files || []);
               e.target.value = "";
               if (!files.length) return;
-              void work("Uploading…", async () => {
-                if (files.length > batchLimit) throw new Error(`Choose up to ${batchLimit} files at a time.`);
+              void work(tUpload("uploading"), async () => {
+                if (files.length > batchLimit) throw new Problem("batchLimit", 400, { limit: batchLimit });
                 let assets = project.assets;
                 await uploadBatch(
                   project.id,
                   files,
-                  (label, p) => {
-                    setBusy(label);
+                  (step, p) => {
+                    setBusy(batchLabel(step));
                     setPercent(p);
                   },
                   (added) => {
@@ -246,13 +254,13 @@ export function Planner({
                     setDrafts((all) => [...all, ...place(added, all)]);
                   },
                 );
-                setStatus(`Queued ${files.length} ${files.length === 1 ? "post" : "posts"}. Add a brief to each.`);
+                setStatus(t("queued", { count: files.length }));
               });
             }}
           />
         </div>
         <div className="plan-controls">
-          <Field label="Default time">
+          <Field label={t("defaultTime")}>
             <input type="time" required value={time} disabled={!!busy} onChange={(e) => setTime(e.target.value || "10:00")} />
             <small>{zone}</small>
           </Field>
@@ -261,10 +269,10 @@ export function Planner({
               type="button"
               className="secondary"
               disabled={!!busy || !missing}
-              onClick={() => void work("Generating captions…", () => generateAll(drafts))}
+              onClick={() => void work(t("generatingAll"), () => generateAll(drafts))}
             >
               <Icon name="spark" size={15} />
-              {busy === "Generating captions…" ? busy : `Generate missing captions (${missing})`}
+              {busy === t("generatingAll") ? busy : t("generateMissing", { count: missing })}
             </button>
             <button
               type="button"
@@ -273,28 +281,22 @@ export function Planner({
               onClick={() => setConfirming(ready.map((d) => d.id))}
             >
               <Icon name="calendar" />
-              Schedule ready posts ({ready.length})
+              {t("scheduleReady", { count: ready.length })}
             </button>
           </div>
           {waiting > 0 && (
-            <small>
-              {waiting} queued {waiting === 1 ? "post needs" : "posts need"} a brief, or a media description, before captions
-              can be generated.
-            </small>
+            <small>{t("waiting", { count: waiting })}</small>
           )}
         </div>
         {confirmList && confirmList.length > 0 && (
           <div className="confirm-delete" role="alertdialog" aria-labelledby="plan-confirm">
             <p id="plan-confirm">
-              <strong>
-                Schedule {confirmList.length} {confirmList.length === 1 ? "post" : "posts"}?
-              </strong>{" "}
-              Times are in {zone}.
+              <strong>{t("confirmTitle", { count: confirmList.length })}</strong> {t("timesIn", { zone })}
             </p>
             <ul className="plan-confirm">
               {confirmList.map((d) => (
                 <li key={d.id}>
-                  <time>{prettyTime(d.when)}</time>
+                  <time>{prettyTime(d.when, locale)}</time>
                   <span className="route-marks">
                     {d.selected.map((p) => (
                       <PlatformMark key={p} platform={p} />
@@ -310,12 +312,12 @@ export function Planner({
               <button
                 className="primary"
                 disabled={!!busy}
-                onClick={() => void work("Scheduling…", () => scheduleAll(confirmList.map((d) => d.id)))}
+                onClick={() => void work(t("scheduling"), () => scheduleAll(confirmList.map((d) => d.id)))}
               >
-                {busy === "Scheduling…" ? busy : "Confirm schedule"}
+                {busy === t("scheduling") ? busy : t("confirm")}
               </button>
               <button className="secondary" disabled={!!busy} autoFocus onClick={() => setConfirming(null)}>
-                Keep editing
+                {t("keepEditing")}
               </button>
             </div>
           </div>
@@ -328,9 +330,9 @@ export function Planner({
         {status && (
           <p role="status" className="plan-status">
             {status}{" "}
-            {status.startsWith("Scheduled") && (
+            {scheduledNote && (
               <button className="text-button" onClick={() => navigate("schedule")}>
-                Open the schedule
+                {t("openSchedule")}
               </button>
             )}
           </p>
@@ -338,31 +340,31 @@ export function Planner({
       </div>
 
       <div className="calendar-nav plan-nav">
-        <button className="icon-button" aria-label="Previous week" disabled={!week} onClick={() => setWeek(week - 1)}>
+        <button className="icon-button" aria-label={t("previousWeek")} disabled={!week} onClick={() => setWeek(week - 1)}>
           <span className="flip">
             <Icon name="chevron" />
           </span>
         </button>
         <button className="secondary" disabled={!week} onClick={() => setWeek(0)}>
-          Next 7 days
+          {t("next7")}
         </button>
-        <button className="icon-button" aria-label="Following week" onClick={() => setWeek(week + 1)}>
+        <button className="icon-button" aria-label={t("followingWeek")} onClick={() => setWeek(week + 1)}>
           <Icon name="chevron" />
         </button>
         <h3 aria-live="polite">{range}</h3>
       </div>
-      <ol className="plan-strip" aria-label="Week at a glance">
+      <ol className="plan-strip" aria-label={t("glance")}>
         {days.map((day) => {
           const queued = drafts.filter((d) => sameDay(d.when, day));
           const posts = project.posts.filter((p) => live(p) && sameDay(p.when, day));
           return (
             <li key={dateValue(day)}>
               <a href={"#plan-" + dateValue(day)}>
-                <small className="day-head">{day.toLocaleDateString(undefined, { weekday: "short" })}</small>
+                <small className="day-head">{day.toLocaleDateString(locale, { weekday: "short" })}</small>
                 <strong>{day.getDate()}</strong>
                 <small>
-                  {queued.length} queued
-                  {posts.length > 0 && ` · ${posts.length} scheduled`}
+                  {t("queuedCount", { count: queued.length })}
+                  {posts.length > 0 && " · " + t("scheduledCount", { count: posts.length })}
                 </small>
               </a>
             </li>
@@ -378,21 +380,21 @@ export function Planner({
         return (
           <section className="plan-day" id={"plan-" + key} key={key} aria-labelledby={"plan-h-" + key}>
             <div className="plan-day-head">
-              <h3 id={"plan-h-" + key}>{day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h3>
+              <h3 id={"plan-h-" + key}>{day.toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" })}</h3>
               <button
                 className="text-button"
                 disabled={!!busy}
                 onClick={() => setDrafts((all) => [...all, blank(project, at(day, time))])}
               >
                 <Icon name="plus" size={15} />
-                Add a post
+                {t("addPost")}
               </button>
             </div>
             {posts.length > 0 && (
-              <ul className="plan-booked" aria-label="Already scheduled">
+              <ul className="plan-booked" aria-label={t("alreadyScheduled")}>
                 {posts.map((p) => (
                   <li key={p.id}>
-                    <time>{new Date(p.when).toLocaleTimeString(undefined, { timeStyle: "short" })}</time>
+                    <time>{new Date(p.when).toLocaleTimeString(locale, { timeStyle: "short" })}</time>
                     <span className="route-marks">
                       {p.destinations.map((d) => (
                         <PlatformMark key={d.platform} platform={d.platform} />
@@ -413,14 +415,14 @@ export function Planner({
                     patch={(values) => patch(d.id, values)}
                     remove={() => setDrafts((all) => all.filter((x) => x.id !== d.id))}
                     generate={() =>
-                      work("Generating " + d.id, () => generateAll([d], d.selected.every((p) => d.captions[p]?.trim())))
+                      work("generate:" + d.id, () => generateAll([d], d.selected.every((p) => d.captions[p]?.trim())))
                     }
                     schedule={() => setConfirming([d.id])}
                   />
                 ))}
               </ul>
             ) : (
-              !posts.length && <p className="muted plan-empty">Nothing planned.</p>
+              !posts.length && <p className="muted plan-empty">{t("nothingPlanned")}</p>
             )}
           </section>
         );
@@ -454,23 +456,27 @@ function PlanCard({
   generate: () => void;
   schedule: () => void;
 }) {
+  const t = useTranslations("planner");
+  const tUpload = useTranslations("upload");
+  const locale = useLocale();
+  const errorText = useErrorText();
   const [uploadError, setUploadError] = useState("");
   const assets = d.media.flatMap((id) => project.assets.find((a) => a.id === id) || []);
   const issue = problem(d);
   const day = d.when.slice(0, 10);
-  const label = (what: string) => what + " for the post on " + new Date(d.when).toLocaleDateString(undefined, { dateStyle: "medium" });
+  const date = new Date(d.when).toLocaleDateString(locale, { dateStyle: "medium" });
   return (
     <li className="plan-card">
       <fieldset disabled={!!busy} className="draft-column">
         {assets.length > 0 && (
-          <ol className="media-grid" aria-label="Attachment order">
+          <ol className="media-grid" aria-label={t("attachmentOrder")}>
             {assets.map((a) => (
               <li key={a.id}>
                 <Media project={project.id} asset={a} />
                 <button
                   type="button"
                   className="text-button"
-                  aria-label={"Remove " + a.name}
+                  aria-label={t("removeMedia", { name: a.name })}
                   onClick={() => patch({ media: d.media.filter((id) => id !== a.id) })}
                 >
                   <Icon name="close" size={15} />
@@ -482,11 +488,11 @@ function PlanCard({
         )}
         <label className="text-button plan-add-media">
           <Icon name="upload" size={15} />
-          {assets.length ? "Add media" : "Attach media"}
+          {assets.length ? t("addMedia") : t("attachMedia")}
           <input
             type="file"
             className="visually-hidden"
-            aria-label={label("Attach media")}
+            aria-label={t("attachMediaFor", { date })}
             accept={mediaAccept}
             multiple
             onChange={(e) => {
@@ -494,9 +500,9 @@ function PlanCard({
               e.target.value = "";
               if (!files.length) return;
               setUploadError("");
-              setBusy("Uploading…");
+              setBusy(tUpload("uploading"));
               forPosting(files, (p) => {
-                setBusy("Converting video…");
+                setBusy(tUpload("converting"));
                 setPercent(p);
               })
                 .then((ready) => uploadMedia(project.id, ready, { existing: d.media }))
@@ -504,7 +510,7 @@ function PlanCard({
                   update({ ...project, assets: [...project.assets, ...added] });
                   patch({ media: [...d.media, ...added.map((a) => a.id)] });
                 })
-                .catch((err) => setUploadError(message(err)))
+                .catch((err) => setUploadError(errorText(err)))
                 .finally(() => {
                   setBusy("");
                   setPercent(null);
@@ -512,28 +518,28 @@ function PlanCard({
             }}
           />
         </label>
-        <Field label="Brief">
+        <Field label={t("brief")}>
           <textarea
             required
             maxLength={4000}
             value={d.brief}
             onChange={(e) => patch({ brief: e.target.value })}
-            placeholder="What should this post say?"
+            placeholder={t("briefPlaceholder")}
           />
         </Field>
         {assets.length > 0 && (
-          <Field label="Describe the media">
+          <Field label={t("describeMedia")}>
             <textarea
               maxLength={1000}
               value={d.mediaDescription}
               onChange={(e) => patch({ mediaDescription: e.target.value })}
-              placeholder="e.g. Two baristas pouring latte art at the new counter."
+              placeholder={t("describePlaceholder")}
             />
-            <small>Generated captions only mention what you describe here.</small>
+            <small>{t("describeHint")}</small>
           </Field>
         )}
         <div className="plan-when">
-          <Field label="Day">
+          <Field label={t("day")}>
             <select
               value={day}
               onChange={(e) => {
@@ -544,12 +550,12 @@ function PlanCard({
               {!days.some((x) => dateValue(x) === day) && <option value={day}>{day}</option>}
               {days.map((x) => (
                 <option key={dateValue(x)} value={dateValue(x)}>
-                  {x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  {x.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" })}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Time">
+          <Field label={t("time")}>
             <input
               type="time"
               required
@@ -558,7 +564,7 @@ function PlanCard({
             />
           </Field>
         </div>
-        <div className="choices" role="group" aria-label={label("Destinations")}>
+        <div className="choices" role="group" aria-label={t("destinationsFor", { date })}>
           {platforms
             .filter((p) => project.channels.includes(p))
             .map((p) => (
@@ -584,11 +590,11 @@ function PlanCard({
               </span>
             </div>
             <textarea
-              aria-label={label(p + " caption")}
+              aria-label={t("captionFor", { platform: p, date })}
               maxLength={6000}
               value={d.captions[p] || ""}
               onChange={(e) => patch({ captions: { ...d.captions, [p]: e.target.value } })}
-              placeholder="Write a caption or generate one."
+              placeholder={t("captionPlaceholder")}
             />
           </div>
         ))}
@@ -597,29 +603,29 @@ function PlanCard({
             {d.error || uploadError}
           </p>
         )}
-        {issue && <small className="plan-issue">{issue}</small>}
+        {issue && <small className="plan-issue">{errorText(new Problem(issue))}</small>}
         <div className="actions">
           <button
             type="button"
             className="secondary"
             disabled={!canGenerate(d) || !d.selected.length}
-            title={canGenerate(d) ? undefined : "Add a brief and describe the media first"}
+            title={canGenerate(d) ? undefined : t("describeFirst")}
             onClick={generate}
           >
             <Icon name="spark" size={15} />
-            {busy === "Generating " + d.id
-              ? "Generating…"
+            {busy === "generate:" + d.id
+              ? t("generating")
               : d.selected.every((p) => d.captions[p]?.trim())
-                ? "Regenerate captions"
+                ? t("regenerate")
                 : d.selected.some((p) => d.captions[p]?.trim())
-                  ? "Fill missing captions"
-                  : "Generate captions"}
+                  ? t("fillMissing")
+                  : t("generate")}
           </button>
           <button type="button" className="primary" disabled={!!issue} onClick={schedule}>
-            Schedule
+            {t("schedule")}
           </button>
           <button type="button" className="text-button" onClick={remove}>
-            Remove
+            {t("remove")}
           </button>
         </div>
       </fieldset>

@@ -1,26 +1,35 @@
 "use client";
 import { useState } from "react";
-import type { Post, Project, Status } from "@/lib/model";
+import { useLocale, useTranslations } from "next-intl";
+import type { Destination, Post, Project, Status } from "@/lib/model";
+import { Problem } from "@/lib/problem";
 import {
   api,
   Field,
   Icon,
   localInput,
   Media,
-  message,
   PlatformMark,
   prettyTime,
+  useErrorText,
 } from "./ui";
 import { PostNotes } from "./editorial";
 
-const statusLabels: Record<Status, string> = {
-  Scheduled: "Scheduled",
-  Delivered: "Scheduled time passed",
-  Canceled: "Canceled",
-  Publishing: "Publishing",
-  Published: "Published",
-  Failed: "Not published",
-};
+/** Status labels and saved publishing errors in the reader's language. */
+function useStatus() {
+  const t = useTranslations("schedule");
+  return {
+    label: (status: Status) => t(`status.${status}`),
+    error: (d: Destination) =>
+      d.errorCode === "reconnect"
+        ? t("errors.reconnect", { platform: d.platform })
+        : d.errorCode === "failed"
+          ? t("errors.failed", { platform: d.platform })
+          : d.errorCode === "processing"
+            ? t("errors.processing", { status: /\(([^)]*)\)/.exec(d.error ?? "")?.[1] ?? "" })
+            : d.error,
+  };
+}
 
 function PostRow({
   project,
@@ -33,6 +42,10 @@ function PostRow({
   update: (p: Project) => void;
   open?: boolean;
 }) {
+  const t = useTranslations("schedule");
+  const locale = useLocale();
+  const errorText = useErrorText();
+  const statusText = useStatus();
   const [edit, setEdit] = useState<"" | "reschedule" | "cancel">("");
   const [when, setWhen] = useState(localInput(new Date(post.when)));
   const [busy, setBusy] = useState(false);
@@ -47,7 +60,7 @@ function PostRow({
         edit === "reschedule" &&
         (!when || !Number.isFinite(date.getTime()) || localInput(date) !== when)
       )
-        throw new Error("Choose a valid local date and time.");
+        throw new Problem("validLocalTime");
       const data = await api({
         action: edit,
         project: project.id,
@@ -57,7 +70,7 @@ function PostRow({
       update(data.project);
       setEdit("");
     } catch (err) {
-      setError(message(err));
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
@@ -67,7 +80,7 @@ function PostRow({
       <summary>
         <span className="date-tile">
           <small>
-            {new Date(post.when).toLocaleDateString(undefined, {
+            {new Date(post.when).toLocaleDateString(locale, {
               month: "short",
             })}
           </small>
@@ -76,8 +89,8 @@ function PostRow({
         <span className="post-summary">
           <strong>{post.brief}</strong>
           <small>
-            {prettyTime(post.when)}
-            {status !== "Scheduled" && " · " + statusLabels[status]}
+            {prettyTime(post.when, locale)}
+            {status !== "Scheduled" && " · " + statusText.label(status)}
           </small>
         </span>
         <span className="route-marks">
@@ -115,25 +128,23 @@ function PostRow({
               <small>
                 {d.url ? (
                   <a href={d.url} target="_blank" rel="noreferrer">
-                    {statusLabels[d.status]}
+                    {statusText.label(d.status)}
                   </a>
                 ) : d.status === "Scheduled" && d.auto ? (
-                  "Publishes automatically"
+                  t("autoPublish")
                 ) : (
-                  statusLabels[d.status]
+                  statusText.label(d.status)
                 )}
               </small>
             </div>
             <p className="preserve">{d.caption}</p>
             {d.error && (
               <p className="error" role="alert">
-                {d.error}
+                {statusText.error(d)}
               </p>
             )}
             {d.status === "Publishing" && !d.container && (
-              <p className="muted">
-                If this doesn’t change within a few minutes, check {d.platform} before scheduling it again.
-              </p>
+              <p className="muted">{t("stuck", { platform: d.platform })}</p>
             )}
           </div>
         ))}
@@ -148,10 +159,10 @@ function PostRow({
                   setEdit("reschedule");
                 }}
               >
-                Reschedule
+                {t("reschedule")}
               </button>
               <button className="text-button" onClick={() => setEdit("cancel")}>
-                Cancel post
+                {t("cancelPost")}
               </button>
             </div>
           ) : (
@@ -162,7 +173,7 @@ function PostRow({
               }}
             >
               {edit === "reschedule" ? (
-                <Field label="New local time">
+                <Field label={t("newTime")}>
                   <input
                     type="datetime-local"
                     required
@@ -174,15 +185,11 @@ function PostRow({
                   </small>
                 </Field>
               ) : (
-                <p>Cancel this post for all selected channels?</p>
+                <p>{t("cancelConfirm")}</p>
               )}
               <div className="actions">
                 <button className="primary" disabled={busy}>
-                  {busy
-                    ? "Saving…"
-                    : edit === "cancel"
-                      ? "Confirm cancellation"
-                      : "Save new time"}
+                  {busy ? t("saving") : edit === "cancel" ? t("confirmCancel") : t("saveTime")}
                 </button>
                 <button
                   type="button"
@@ -193,7 +200,7 @@ function PostRow({
                     setError("");
                   }}
                 >
-                  Keep schedule
+                  {t("keepSchedule")}
                 </button>
               </div>
             </form>
@@ -238,6 +245,9 @@ function Calendar({
   update: (p: Project) => void;
   mode: Exclude<Mode, "list">;
 }) {
+  const t = useTranslations("schedule");
+  const locale = useLocale();
+  const statusText = useStatus();
   const [anchor, setAnchor] = useState(startOfToday);
   const [selected, setSelected] = useState("");
   const today = dayKey(new Date());
@@ -255,27 +265,27 @@ function Calendar({
     );
   const label =
     mode === "month"
-      ? anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+      ? anchor.toLocaleDateString(locale, { month: "long", year: "numeric" })
       : mode === "week"
-        ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).formatRange(
+        ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).formatRange(
             days[0],
             days[6],
           )
-        : anchor.toLocaleDateString(undefined, { dateStyle: "full" });
+        : anchor.toLocaleDateString(locale, { dateStyle: "full" });
   const picked = project.posts.find((p) => p.id === selected);
   const dayPosts = byDay.get(dayKey(anchor)) ?? [];
   return (
     <>
       <div className="calendar-nav">
-        <button className="icon-button" aria-label="Previous" onClick={() => step(-1)}>
+        <button className="icon-button" aria-label={t("previous")} onClick={() => step(-1)}>
           <span className="flip">
             <Icon name="chevron" />
           </span>
         </button>
         <button className="secondary" onClick={() => setAnchor(startOfToday())}>
-          Today
+          {t("today")}
         </button>
-        <button className="icon-button" aria-label="Next" onClick={() => step(1)}>
+        <button className="icon-button" aria-label={t("next")} onClick={() => step(1)}>
           <Icon name="chevron" />
         </button>
         <h3 aria-live="polite">{label}</h3>
@@ -288,7 +298,7 @@ function Calendar({
         ) : (
           <div className="empty">
             <Icon name="calendar" size={26} />
-            <strong>Nothing scheduled this day.</strong>
+            <strong>{t("emptyDay")}</strong>
           </div>
         )
       ) : (
@@ -302,7 +312,7 @@ function Calendar({
               }
             >
               <small className="day-head">
-                {d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" })}
+                {d.toLocaleDateString(locale, { weekday: "short", day: "numeric" })}
               </small>
               {(byDay.get(dayKey(d)) ?? []).map((post) => {
                 const status = post.destinations[0].status;
@@ -315,11 +325,11 @@ function Calendar({
                       (status === "Canceled" || status === "Failed" ? " dim" : "")
                     }
                     aria-pressed={post.id === selected}
-                    title={`${prettyTime(post.when)} · ${statusLabels[status]}`}
+                    title={`${prettyTime(post.when, locale)} · ${statusText.label(status)}`}
                     onClick={() => setSelected(post.id === selected ? "" : post.id)}
                   >
                     <time>
-                      {new Date(post.when).toLocaleTimeString(undefined, {
+                      {new Date(post.when).toLocaleTimeString(locale, {
                         timeStyle: "short",
                       })}
                     </time>
@@ -352,6 +362,7 @@ export function Schedule({
   update: (p: Project) => void;
   compose: () => void;
 }) {
+  const t = useTranslations("schedule");
   const [mode, setMode] = useState<Mode>("list");
   const upcoming = project.posts.filter((p) =>
     p.destinations.some((d) => d.status === "Scheduled"),
@@ -363,17 +374,17 @@ export function Schedule({
     <section className="schedule-view">
       <div className="title-row">
         <div>
-          <h2>Project schedule</h2>
+          <h2>{t("title")}</h2>
           <p className="muted">
-            Times shown in {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            {t("timesIn", { zone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
           </p>
         </div>
         <button className="primary" onClick={compose}>
           <Icon name="plus" />
-          Compose a post
+          {t("compose")}
         </button>
       </div>
-      <div className="tabs schedule-modes" role="group" aria-label="Schedule view">
+      <div className="tabs schedule-modes" role="group" aria-label={t("view")}>
         {modes.map((m) => (
           <button
             key={m}
@@ -381,14 +392,14 @@ export function Schedule({
             onClick={() => setMode(m)}
           >
             {mode === m && <span className="tab-outline" />}
-            {m[0].toUpperCase() + m.slice(1)}
+            {t(`modes.${m}`)}
           </button>
         ))}
       </div>
       <div
         className="schedule-list"
         role="region"
-        aria-label="Scheduled posts"
+        aria-label={t("posts")}
         tabIndex={0}
       >
         {mode !== "list" ? (
@@ -396,7 +407,7 @@ export function Schedule({
         ) : (
         <>
         <h3>
-          Upcoming <span className="count">{upcoming.length}</span>
+          {t("upcoming")} <span className="count">{upcoming.length}</span>
         </h3>
         {upcoming.length ? (
           upcoming.map((post) => (
@@ -405,15 +416,13 @@ export function Schedule({
         ) : (
           <div className="empty">
             <Icon name="calendar" size={26} />
-            <strong>Your schedule is clear.</strong>
-            <p>
-              Posts appear here once you confirm their captions and scheduled time.
-            </p>
+            <strong>{t("clear")}</strong>
+            <p>{t("clearHint")}</p>
           </div>
         )}
         {history.length > 0 && (
           <section>
-            <h3>History</h3>
+            <h3>{t("history")}</h3>
             {history.map((post) => (
               <PostRow key={post.id} {...{ project, post, update }} />
             ))}

@@ -2,69 +2,45 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { animate, inView, scroll, stagger } from "motion";
 import { useAnimate } from "motion/react";
+import { useTranslations } from "next-intl";
 import { platforms } from "@/lib/model";
 import { Brand, Icon, PlatformMark, SiteFooter } from "./ui";
+import { LanguageSwitch } from "./language-switch";
 import "./landing.css";
 
+// Copy lives in the landing.* messages; these lists only fix the order and icons.
 const chapters = [
-  {
-    id: "workflows", title: "Workflows", icon: "compose",
-    statement: "Take one brief from a first idea to", emphasis: "three channel-ready posts.",
-    details: [
-      ["Start with a brief", "Describe the post once. Keep its brief, captions, and media together while you work."],
-      ["Write for each channel", "Draft a separate caption for every destination. Generate it from the brand voice or write it yourself."],
-      ["Review before scheduling", "Check the media order, read each caption, and confirm the scheduled time."],
-    ],
-  },
-  {
-    id: "brand-voice", title: "Brand voice", icon: "voice",
-    statement: "Switch between projects and give each brand", emphasis: "a voice of its own.",
-    details: [
-      ["Define the audience", "Describe what the brand makes and who it speaks to."],
-      ["Set the tone", "Save the tone, example copy, and words to avoid alongside the project."],
-      ["Keep the voice close", "Edit the saved brand voice as it evolves. New caption drafts use the updated guidance."],
-    ],
-  },
-  {
-    id: "schedule", title: "Schedule", icon: "calendar",
-    statement: "See what’s going out, when it’s due, and where it’s headed.", emphasis: "All in one place.",
-    details: [
-      ["See what’s next", "Find upcoming posts across projects in the workspace overview."],
-      ["Adjust the timing", "Open a scheduled post to change its time or cancel it across the selected channels."],
-      ["Check each destination", "Expand a post to see the caption and schedule status for each selected channel."],
-    ],
-  },
+  { id: "workflows", icon: "compose" },
+  { id: "brandVoice", icon: "voice" },
+  { id: "schedule", icon: "calendar" },
 ] as const;
+const details = ["one", "two", "three"] as const;
 
 type Chapter = (typeof chapters)[number]["id"];
 
 const toolsIndex = [
-  ["Projects", "folder"], ["Brand voice", "voice"], ["Post briefs", "compose"],
-  ["Captions", "spark"], ["Media", "upload"],
+  ["projects", "folder"], ["brandVoice", "voice"], ["briefs", "compose"],
+  ["captions", "spark"], ["media", "upload"],
 ] as const;
 
 const sectionLinks = [
-  ["#index", "Publishing index"],
-  ["#features", "Workflows"],
-  ["#faq", "FAQ"],
+  ["#index", "index"],
+  ["#features", "workflows"],
+  ["#faq", "faq"],
 ] as const;
 
-const questions = [
-  ["What do I need to get started?", "Create an account with your email and a password, or sign in. Create a brand project, then connect the channels you want to plan for."],
-  ["How do I publish a scheduled post?", "Connect a Facebook Page, and its linked Instagram account, under Channels. Hub Connect then publishes to them at the scheduled time. TikTok posts stay in your schedule for you to share yourself."],
-  ["Can I write my own captions?", "Yes. Write or edit any caption in the composer. If Claude is configured, you can also generate a draft using the project’s saved brand voice."],
-  ["Which time zone does the schedule use?", "Hub Connect shows dates and times in your browser’s local time zone."],
-];
+const questions = ["start", "publish", "write", "timezone"] as const;
 
 function SchedulePreview() {
+  const t = useTranslations("landing.scene");
   return (
     <div className="sample-sheet">
       <div className="sample-meta"><span>Form Studio</span><Icon name="calendar" /></div>
-      <strong>Publishing schedule</strong>
+      <strong>{t("schedule")}</strong>
       {platforms.map((platform) => (
         <div className="sample-row" key={platform}>
           <PlatformMark platform={platform} />
-          <span>{platform}</span><span className="sample-time">Fri · 10:00</span>
+          <span>{platform}</span><span className="sample-time">{t("slot")}</span>
         </div>
       ))}
     </div>
@@ -72,6 +48,7 @@ function SchedulePreview() {
 }
 
 function ProductScene({ chapter }: { chapter: Chapter }) {
+  const t = useTranslations("landing.scene");
   const stage = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (stage.current) {
@@ -83,34 +60,34 @@ function ProductScene({ chapter }: { chapter: Chapter }) {
   return (
     <div ref={stage} className="product-stage" aria-hidden="true">
       {chapter === "schedule" ? (
-        <><SchedulePreview /><div className="scene-note"><Icon name="clock" /><span>Next post<strong>Friday at 10:00</strong></span></div></>
+        <><SchedulePreview /><div className="scene-note"><Icon name="clock" /><span>{t("nextPost")}<strong>{t("nextPostTime")}</strong></span></div></>
       ) : chapter === "workflows" ? (
         <>
           <div className="sample-post">
             <div className="sample-meta"><span>Form Studio</span><PlatformMark platform="Instagram" /></div>
             <Image src="/routing-study.webp" width={460} height={345} sizes="(max-width: 700px) 45vw, 310px" alt="" />
-            <div className="post-copy"><strong>Routes in color.</strong><p>Three paths, one starting point. A new study in shape and color.</p></div>
+            <div className="post-copy"><strong>{t("postTitle")}</strong><p>{t("postCopy")}</p></div>
           </div>
           <div className="sample-flow">
-            <span><Icon name="voice" />Post brief</span>
-            <span><Icon name="compose" />Edit captions</span>
-            <span><Icon name="calendar" />Schedule post</span>
+            <span><Icon name="voice" />{t("flowBrief")}</span>
+            <span><Icon name="compose" />{t("flowCaptions")}</span>
+            <span><Icon name="calendar" />{t("flowSchedule")}</span>
           </div>
         </>
       ) : (
         <>
           <div className="sample-voice">
-            <Icon name="voice" /><strong>Voice settings</strong>
-            <span>Audience</span><p>Designers and collectors</p>
-            <span>Tone</span><p>Curious, warm, direct</p>
+            <Icon name="voice" /><strong>{t("voiceSettings")}</strong>
+            <span>{t("audience")}</span><p>{t("audienceValue")}</p>
+            <span>{t("tone")}</span><p>{t("toneValue")}</p>
           </div>
           <div className="voice-page">
             <div className="sample-meta">Form Studio<Icon name="compose" /></div>
             <div className="voice-excerpt">
-              <strong>Our voice.</strong>
-              <p>Look closely. Find the detail that makes a familiar object feel new.</p>
-              <span>Words we use</span>
-              <div>Form · Texture · Color</div>
+              <strong>{t("ourVoice")}</strong>
+              <p>{t("voiceCopy")}</p>
+              <span>{t("wordsWeUse")}</span>
+              <div>{t("words")}</div>
             </div>
           </div>
         </>
@@ -252,6 +229,7 @@ function HeroOrb() {
 }
 
 export function Landing({ enter, busy, error }: { enter: (fields: Record<string, string>) => void; busy: boolean; error: string }) {
+  const t = useTranslations("landing");
   const topEdge = useRef<HTMLDivElement>(null);
   const cue = useRef<HTMLAnchorElement>(null);
   const [indexGrid, animateIndex] = useAnimate<HTMLUListElement>();
@@ -280,12 +258,12 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
         enter(Object.fromEntries(new FormData(e.currentTarget, e.nativeEvent.submitter)) as Record<string, string>);
       }}
     >
-      <input id="email" name="email" type="email" autoComplete="email" required aria-label="Email" placeholder="Email" />
-      <input name="password" type="password" autoComplete="current-password" required minLength={8} maxLength={128} aria-label="Password" placeholder="Password" />
+      <input id="email" name="email" type="email" autoComplete="email" required aria-label={t("email")} placeholder={t("email")} />
+      <input name="password" type="password" autoComplete="current-password" required minLength={8} maxLength={128} aria-label={t("password")} placeholder={t("password")} />
       <button className="ghost" name="action" value="signin" disabled={busy}>
-        {busy ? "Opening workspace…" : "Sign in"} <Icon name="arrow" size={17} />
+        {busy ? t("opening") : t("signIn")} <Icon name="arrow" size={17} />
       </button>
-      <button className="ghost" name="action" value="signup" disabled={busy}>Create account</button>
+      <button className="ghost" name="action" value="signup" disabled={busy}>{t("createAccount")}</button>
     </form>
   );
   return (
@@ -293,50 +271,54 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
       <div className="top-edge" ref={topEdge} aria-hidden="true" />
       <header className="site-header">
         <div className="mast-inner wide">
-          <a className="mast-brand" href="#top" aria-label="Hub Connect home"><Brand /></a>
-          <nav aria-label="Homepage navigation">
-            {sectionLinks.map(([href, label]) => <a href={href} key={href}>{label}</a>)}
+          <a className="mast-brand" href="#top" aria-label={t("home")}><Brand /></a>
+          <nav aria-label={t("navigation")}>
+            {sectionLinks.map(([href, label]) => <a href={href} key={href}>{t(`links.${label}`)}</a>)}
           </nav>
-          <a className="mast-action" href="#email">Sign in <Icon name="arrow" size={16} /></a>
+          <div className="mast-end">
+            <LanguageSwitch />
+            <a className="mast-action" href="#email">{t("signIn")} <Icon name="arrow" size={16} /></a>
+          </div>
         </div>
       </header>
       <main>
         <HeroOrb />
         <section className="land-hero wide">
-          <h1>Social<br />publishing<br />workspace.</h1>
+          <h1>{t.rich("hero", { br: () => <br /> })}</h1>
           <div className="hero-foot">
-            <p>One brief. Three channels.<br />Your brand’s own voice.</p>
+            <p>{t.rich("heroFoot", { br: () => <br /> })}</p>
             {signIn}
           </div>
-          <a ref={cue} href="#about" className="scroll-cue" hidden>Scroll ↓</a>
+          <a ref={cue} href="#about" className="scroll-cue" hidden>{t("scroll")}</a>
         </section>
         <div className="wide">
           <section id="about" className="land-intro">
             <div>
-              <h2 className="section-label">The workspace</h2>
-              <a className="ghost" href="#features">Explore features <Icon name="arrow" size={17} /></a>
+              <h2 className="section-label">{t("workspace")}</h2>
+              <a className="ghost" href="#features">{t("explore")} <Icon name="arrow" size={17} /></a>
             </div>
-            <p>Bring your brand voice, media, and publishing schedule into one place. Write a brief, tailor each caption, and review what goes to Facebook, Instagram, and TikTok.</p>
+            <p>{t("intro")}</p>
           </section>
           <section id="index" className="land-section">
-            <h2 className="section-label">Publishing index</h2>
+            <h2 className="section-label">{t("links.index")}</h2>
             <ul className="index-grid" ref={indexGrid}>
-              {toolsIndex.map(([name, icon]) => <li key={name}><Icon name={icon} />{name}</li>)}
+              {toolsIndex.map(([name, icon]) => <li key={name}><Icon name={icon} />{t(`tools.${name}`)}</li>)}
               {platforms.map(p => <li key={p}><PlatformMark platform={p} />{p}</li>)}
-              <li><Icon name="check" />Review</li><li><Icon name="calendar" />Schedule</li>
+              <li><Icon name="check" />{t("tools.review")}</li><li><Icon name="calendar" />{t("tools.schedule")}</li>
             </ul>
           </section>
           <section id="features" className="land-section">
-            <h2 className="section-label">Featured workflows</h2>
+            <h2 className="section-label">{t("featured")}</h2>
             <div className="work-grid">
               {chapters.map(chapter => (
                 <article className="work-card" id={chapter.id} key={chapter.id}>
-                  <h3>{chapter.title}</h3>
+                  <h3>{t(`chapters.${chapter.id}.title`)}</h3>
                   <ProductScene chapter={chapter.id} />
-                  <p>{chapter.statement} {chapter.emphasis}</p>
-                  {chapter.details.map(([title, copy]) => (
-                    <details key={title} name={chapter.id}>
-                      <summary>{title}<Icon name="plus" size={16} /></summary><p>{copy}</p>
+                  <p>{t(`chapters.${chapter.id}.statement`)}</p>
+                  {details.map((d) => (
+                    <details key={d} name={chapter.id}>
+                      <summary>{t(`chapters.${chapter.id}.${d}.title`)}<Icon name="plus" size={16} /></summary>
+                      <p>{t(`chapters.${chapter.id}.${d}.copy`)}</p>
                     </details>
                   ))}
                 </article>
@@ -344,17 +326,17 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
             </div>
           </section>
           <section className="land-faq land-section" id="faq">
-            <h2>Frequently asked<br />questions.</h2>
-            <div>{questions.map(([question, answer]) => (
-              <details key={question}><summary>{question}<Icon name="plus" size={16} /></summary><p>{answer}</p></details>
+            <h2>{t.rich("faqTitle", { br: () => <br /> })}</h2>
+            <div>{questions.map((q) => (
+              <details key={q}><summary>{t(`faq.${q}.question`)}<Icon name="plus" size={16} /></summary><p>{t(`faq.${q}.answer`)}</p></details>
             ))}</div>
           </section>
         </div>
       </main>
       <SiteFooter>
-        <a href="#about">The workspace</a>
-        {sectionLinks.map(([href, label]) => <a href={href} key={href}>{label}</a>)}
-        <a href="#email">Sign in <Icon name="arrow" size={15} /></a>
+        <a href="#about">{t("workspace")}</a>
+        {sectionLinks.map(([href, label]) => <a href={href} key={href}>{t(`links.${label}`)}</a>)}
+        <a href="#email">{t("signIn")} <Icon name="arrow" size={15} /></a>
       </SiteFooter>
       {error && <p className="land-error error" role="alert">{error}</p>}
     </div>

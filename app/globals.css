@@ -4,6 +4,14 @@
   font-weight: 200 800;
   font-display: swap;
 }
+/* Thai glyphs only: Manrope has none, so Thai text falls through to this face. Noto Sans Thai, SIL OFL 1.1. */
+@font-face {
+  font-family: "Noto Sans Thai";
+  src: url("/noto-sans-thai.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
 :root {
   --color-parchment: #e5e4e0;
   --color-ink: #1d1d1d;
@@ -11,7 +19,7 @@
   --color-ash: #bfbebe;
   --color-stone: #cdcdc9;
   --gradient-iridescent-sphere: linear-gradient(255deg, rgb(250, 203, 14), rgb(240, 107, 168) 30%, rgb(120, 186, 230) 65%, white);
-  --font-ataero-retina-ob-edition: "Ataero Retina OB Edition", Manrope, sans-serif;
+  --font-ataero-retina-ob-edition: "Ataero Retina OB Edition", Manrope, "Noto Sans Thai", sans-serif;
   --grid-paper: linear-gradient(#e5e4e0 1px, transparent 1px), linear-gradient(90deg, #e5e4e0 1px, transparent 1px);
   --section-gap: clamp(76px, 7vw, 119px);
   --gutter: clamp(16px, 2.5vw, 46px);
@@ -296,4 +304,36 @@ details .field { margin-top: 15px; }
   .plan-strip a { padding: 6px; min-height: 72px; }
   .plan-strip a small:last-child { display: none; }
   .plan-confirm li { grid-template-columns: 1fr; }
+}
+/* Language switch */
+.mast-end { display: flex; align-items: center; gap: 8px; justify-self: end; }
+.language-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(255 255 255 / .55); border: 1px solid rgb(29 29 29 / .08); }
+.language-switch button { min-width: 44px; min-height: 38px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 650; }
+.language-switch button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper); }
+.language-switch button:enabled:hover { text-decoration: none; background: rgb(255 255 255 / .8); }
+.language-switch button[aria-pressed="true"]:hover { background: var(--color-ink); }
+.not-found > * + * { margin-top: 15px; }
+.not-found a { text-decoration: underline; text-underline-offset: 4px; }
+/* Thai: tone marks stack above and vowels below each letter, so display type needs room and no
+   tight tracking; there is no upper case, and small labels read better slightly larger. */
+:lang(th) body, body:lang(th) { line-height: 1.6; letter-spacing: 0; }
+:lang(th) :is(h1, h2, h3, h4) { line-height: 1.25; letter-spacing: 0; }
+:lang(th) .desk h1 { line-height: 1.2; }
+:lang(th) :is(.section-label, .field > span, .count, .sample-meta, .filename, .scroll-cue, small, .switch-project, .note-scope, .footer-signature p) {
+  letter-spacing: 0; font-size: 12px; line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .mast-end { grid-column: 2; grid-row: 1; }
+  .mast-end .mast-action { grid-column: auto; grid-row: auto; }
+}
+.mast-action { white-space: nowrap; }
+@media (max-width: 440px) {
+  .mast-end { gap: 6px; }
+  .mast-end .mast-action { padding: 0 14px; }
+  .mast-end .mast-action svg { display: none; }
+  /* Signed in, the header also holds the language switch: sign out keeps only its icon. */
+  .mast-end .sign-out { padding: 0 13px; }
+  .mast-end .sign-out svg { display: inline; }
+  .sign-out .mast-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .language-switch button { min-width: 40px; padding: 0 8px; }
 }

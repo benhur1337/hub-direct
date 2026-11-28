@@ -1,5 +1,6 @@
 import { sections, type BrandField, type Group } from "./brand-fields";
 import type { Asset, Project } from "./model";
+import { Problem, type ErrorKey, type ErrorValues } from "./problem";
 
 export type Answer = string | string[] | Record<string, string>;
 export type BrandProfile = Partial<Record<Group, Record<string, Answer>>>;
@@ -9,12 +10,15 @@ export type SavedBrand = {
   draft?: BrandProfile;
   completed?: BrandProfile;
 };
-export class BrandInputError extends Error {
+/** A Problem with the onboarding step to return to; `field` is "group.key". */
+export class BrandInputError extends Problem {
   constructor(
-    message: string,
+    key: ErrorKey,
     readonly step: number,
+    values: ErrorValues = {},
+    field?: string,
   ) {
-    super(message);
+    super(key, 400, values, field);
   }
 }
 export function initialProfile(name: string, voice: string): BrandProfile {
@@ -38,28 +42,28 @@ export function textLimit(f: BrandField) {
 }
 
 export function normalizeProfile(input: unknown, assets: Asset[], complete: boolean): BrandProfile {
-  if (!record(input)) throw new BrandInputError("Enter a brand profile.", 0);
+  if (!record(input)) throw new BrandInputError("brandProfile", 0);
   const result: BrandProfile = {};
   for (const [step, section] of sections.entries()) {
     for (const f of section.fields) {
-      const fail = (reason: string): never => {
-        throw new BrandInputError(f.label + " — " + reason, step);
+      const fail = (reason: ErrorKey, values: ErrorValues = {}): never => {
+        throw new BrandInputError(reason, step, values, f.group + "." + f.key);
       };
       const group = input[f.group];
-      if (group !== undefined && !record(group)) fail("Use the fields in this section.");
+      if (group !== undefined && !record(group)) fail("useSectionFields");
       const raw = record(group) ? group[f.key] : undefined;
       if (raw === undefined) continue;
       const clean = (item: unknown, max = textLimit(f)) => {
-        if (typeof item !== "string") return fail("Enter text.");
+        if (typeof item !== "string") return fail("enterText");
         const text = item.trim();
-        if (text.length > max) fail("Use up to " + max + " characters per entry.");
+        if (text.length > max) fail("maxPerEntry", { max });
         if (!text) return "";
         if (f.kind === "url" || f.kind === "urls") {
           let url: URL;
           try {
             url = new URL(text);
           } catch {
-            return fail("Enter a full https:// or http:// URL.");
+            return fail("fullUrl");
           }
           if (
             !["https:", "http:"].includes(url.protocol) ||
@@ -67,30 +71,30 @@ export function normalizeProfile(input: unknown, assets: Asset[], complete: bool
             url.username ||
             url.password
           )
-            fail("Use a public http:// or https:// URL without credentials.");
+            fail("publicUrl");
           return url.href;
         }
         if (f.kind === "colour" || f.kind === "colours") {
-          if (!/^#[0-9a-f]{6}$/i.test(text)) fail("Choose a six-digit hex colour.");
+          if (!/^#[0-9a-f]{6}$/i.test(text)) fail("hexColour");
           return text.toUpperCase();
         }
         if (f.kind === "assets" || f.kind === "logo") {
           const asset = assets.find((a) => a.id === text);
           if (!asset || (f.kind === "logo" && !asset.type.startsWith("image/")))
-            fail("Choose a file uploaded to this project.");
+            fail("projectFile");
         }
         return text;
       };
       let value: Answer;
       if (lists.includes(f.kind)) {
         if (!Array.isArray(raw) || raw.length > 40)
-          throw new BrandInputError(f.label + " — use up to 40 entries.", step);
+          throw new BrandInputError("maxEntries", step, {}, f.group + "." + f.key);
         value = [...new Set(raw.map((item) => clean(item)).filter(Boolean))];
-        if (value.length > (f.limit ?? 40)) fail("Choose up to " + f.limit + ".");
+        if (value.length > (f.limit ?? 40)) fail("chooseUpTo", { limit: f.limit ?? 40 });
         if (!value.length) continue;
       } else if (f.kind === "platformNotes") {
         if (!record(raw))
-          throw new BrandInputError("Enter guidelines for a selected platform.", step);
+          throw new BrandInputError("platformGuidelines", step);
         const active = strings(result.social_platforms?.active);
         value = Object.fromEntries(
           active
@@ -107,11 +111,17 @@ export function normalizeProfile(input: unknown, assets: Asset[], complete: bool
     }
   }
   if (complete && !result.brand_identity?.name)
-    throw new BrandInputError("Enter your brand name to finish.", 0);
+    throw new BrandInputError("brandName", 0);
   return result;
 }
 
-export function answerText(f: BrandField, profile: BrandProfile, assets: Asset[]) {
+/** `option` shows a stored option value in the reader's language; stored values stay English. */
+export function answerText(
+  f: BrandField,
+  profile: BrandProfile,
+  assets: Asset[],
+  option: (value: string) => string = (v) => v,
+) {
   const value = profile[f.group]?.[f.key];
   if (value === undefined) return "";
   const parts =
@@ -127,7 +137,11 @@ export function answerText(f: BrandField, profile: BrandProfile, assets: Asset[]
             .map(([p, v]) => p + " — " + v);
   return parts
     .map((part) =>
-      f.kind === "logo" || f.kind === "assets" ? assets.find((a) => a.id === part)?.name : part,
+      f.kind === "logo" || f.kind === "assets"
+        ? assets.find((a) => a.id === part)?.name
+        : f.options?.includes(part)
+          ? option(part)
+          : part,
     )
     .filter(Boolean)
     .join("\n");

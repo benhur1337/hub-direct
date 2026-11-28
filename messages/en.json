@@ -1,0 +1,830 @@
+{
+  "meta": {
+    "title": "Hub Connect — Publishing workspace",
+    "description": "Plan social posts, review captions, and manage each brand’s publishing schedule in Hub Connect."
+  },
+  "common": {
+    "tagline": "One brief. Three channels.",
+    "backToTop": "Back to top",
+    "language": "Language"
+  },
+  "workspace": {
+    "opening": "Opening workspace…",
+    "home": "Hub Connect workspace",
+    "navigation": "Workspace navigation",
+    "projects": "Projects",
+    "newProject": "New project",
+    "signOut": "Sign out",
+    "title": "Workspace",
+    "projectSummary": "{channels, plural, one {# channel} other {# channels}} · {upcoming, number} upcoming",
+    "upcomingPosts": "Upcoming posts",
+    "upcomingEmpty": "Scheduled posts from your projects will appear here.",
+    "refreshFailed": "Could not refresh the schedule. Retrying shortly.",
+    "createProject": "Create a project",
+    "createFirstProject": "Create your first project",
+    "createLead": "Start with a name. You can add brand guidelines next or return to them later.",
+    "projectName": "Project name",
+    "projectNamePlaceholder": "e.g. Sunday Studio",
+    "creating": "Creating…",
+    "createButton": "Create project",
+    "switchProject": "Switch project",
+    "deleteProject": "Delete project",
+    "deleteTitle": "Delete {name}?",
+    "deleteBody": "This removes its brand voice, {posts, plural, one {# post} other {# posts}}, and {files, plural, one {# uploaded file} other {# uploaded files}}. This cannot be undone.",
+    "deleting": "Deleting…",
+    "deletePermanently": "Delete permanently",
+    "keepProject": "Keep project",
+    "projectNavigation": "Project navigation",
+    "channelsTitle": "Connected channels",
+    "channelsLead": "Connect Facebook to publish to its Page and linked Instagram account automatically. TikTok posts stay in your plan for you to publish.",
+    "disconnect": "Disconnect",
+    "connectThroughFacebook": "Connect through Facebook",
+    "connect": "Connect",
+    "connected": "Connected",
+    "composePost": "Compose a post",
+    "projectSchedule": "Project schedule"
+  },
+  "tabs": {
+    "schedule": "Schedule",
+    "compose": "Compose",
+    "plan": "Plan week",
+    "library": "Library",
+    "voice": "Brand voice",
+    "channels": "Channels"
+  },
+  "metaLogin": {
+    "denied": "Facebook login was canceled. Connect again to publish automatically.",
+    "pages": "Choose exactly one Facebook Page when you connect, then try again.",
+    "setup": "Automatic publishing isn’t set up on this server yet (META_APP_ID, META_APP_SECRET, APP_URL).",
+    "failed": "Facebook couldn’t be connected. Try again; if it keeps failing, the server log shows the reason under “Meta login failed”.",
+    "expired": "That Facebook login couldn’t be matched to this browser. Start Connect again from this same web address, within 10 minutes."
+  },
+  "landing": {
+    "home": "Hub Connect home",
+    "navigation": "Homepage navigation",
+    "email": "Email",
+    "password": "Password",
+    "opening": "Opening workspace…",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "hero": "Social<br></br>publishing<br></br>workspace.",
+    "heroFoot": "One brief. Three channels.<br></br>Your brand’s own voice.",
+    "scroll": "Scroll ↓",
+    "workspace": "The workspace",
+    "explore": "Explore features",
+    "intro": "Bring your brand voice, media, and publishing schedule into one place. Write a brief, tailor each caption, and review what goes to Facebook, Instagram, and TikTok.",
+    "featured": "Featured workflows",
+    "faqTitle": "Frequently asked<br></br>questions.",
+    "links": {
+      "index": "Publishing index",
+      "workflows": "Workflows",
+      "faq": "FAQ"
+    },
+    "tools": {
+      "projects": "Projects",
+      "brandVoice": "Brand voice",
+      "briefs": "Post briefs",
+      "captions": "Captions",
+      "media": "Media",
+      "review": "Review",
+      "schedule": "Schedule"
+    },
+    "chapters": {
+      "workflows": {
+        "title": "Workflows",
+        "statement": "Take one brief from a first idea to three channel-ready posts.",
+        "one": {
+          "title": "Start with a brief",
+          "copy": "Describe the post once. Keep its brief, captions, and media together while you work."
+        },
+        "two": {
+          "title": "Write for each channel",
+          "copy": "Draft a separate caption for every destination. Generate it from the brand voice or write it yourself."
+        },
+        "three": {
+          "title": "Review before scheduling",
+          "copy": "Check the media order, read each caption, and confirm the scheduled time."
+        }
+      },
+      "brandVoice": {
+        "title": "Brand voice",
+        "statement": "Switch between projects and give each brand a voice of its own.",
+        "one": {
+          "title": "Define the audience",
+          "copy": "Describe what the brand makes and who it speaks to."
+        },
+        "two": {
+          "title": "Set the tone",
+          "copy": "Save the tone, example copy, and words to avoid alongside the project."
+        },
+        "three": {
+          "title": "Keep the voice close",
+          "copy": "Edit the saved brand voice as it evolves. New caption drafts use the updated guidance."
+        }
+      },
+      "schedule": {
+        "title": "Schedule",
+        "statement": "See what’s going out, when it’s due, and where it’s headed. All in one place.",
+        "one": {
+          "title": "See what’s next",
+          "copy": "Find upcoming posts across projects in the workspace overview."
+        },
+        "two": {
+          "title": "Adjust the timing",
+          "copy": "Open a scheduled post to change its time or cancel it across the selected channels."
+        },
+        "three": {
+          "title": "Check each destination",
+          "copy": "Expand a post to see the caption and schedule status for each selected channel."
+        }
+      }
+    },
+    "faq": {
+      "start": {
+        "question": "What do I need to get started?",
+        "answer": "Create an account with your email and a password, or sign in. Create a brand project, then connect the channels you want to plan for."
+      },
+      "publish": {
+        "question": "How do I publish a scheduled post?",
+        "answer": "Connect a Facebook Page, and its linked Instagram account, under Channels. Hub Connect then publishes to them at the scheduled time. TikTok posts stay in your schedule for you to share yourself."
+      },
+      "write": {
+        "question": "Can I write my own captions?",
+        "answer": "Yes. Write or edit any caption in the composer. If Claude is configured, you can also generate a draft using the project’s saved brand voice."
+      },
+      "timezone": {
+        "question": "Which time zone does the schedule use?",
+        "answer": "Hub Connect shows dates and times in your browser’s local time zone."
+      }
+    },
+    "scene": {
+      "schedule": "Publishing schedule",
+      "slot": "Fri · 10:00",
+      "nextPost": "Next post",
+      "nextPostTime": "Friday at 10:00",
+      "postTitle": "Routes in color.",
+      "postCopy": "Three paths, one starting point. A new study in shape and color.",
+      "flowBrief": "Post brief",
+      "flowCaptions": "Edit captions",
+      "flowSchedule": "Schedule post",
+      "voiceSettings": "Voice settings",
+      "audience": "Audience",
+      "audienceValue": "Designers and collectors",
+      "tone": "Tone",
+      "toneValue": "Curious, warm, direct",
+      "ourVoice": "Our voice.",
+      "voiceCopy": "Look closely. Find the detail that makes a familiar object feel new.",
+      "wordsWeUse": "Words we use",
+      "words": "Form · Texture · Color"
+    }
+  },
+  "composer": {
+    "title": "Compose a post",
+    "noChannels": "Choose a channel for your first draft.",
+    "connectChannels": "Connect channels",
+    "reviewTitle": "Review your post",
+    "reviewLead": "Check the captions, media order, and time before scheduling.",
+    "lead": "Start with a brief, then tailor the caption for each destination.",
+    "scheduling": "Scheduling…",
+    "reviewing": "Reviewing…",
+    "detailsToReview": "Post details to review",
+    "content": "Post content",
+    "brief": "Post brief",
+    "briefPlaceholder": "What would you like this post to say?",
+    "media": "Media",
+    "optional": "Optional",
+    "chooseMedia": "Choose photos or a video",
+    "attached": "{count, number} attached · add more, up to 10 photos or 1 video",
+    "mediaLimits": "Up to 10 photos (8 MB each) or 1 video (40 MB)",
+    "uploadMedia": "Upload media",
+    "attachmentOrder": "Attachment order",
+    "moveEarlier": "Move {name} earlier",
+    "moveLater": "Move {name} later",
+    "remove": "Remove {name}",
+    "describeMedia": "Describe the media",
+    "describePlaceholder": "e.g. Two baristas pouring latte art at the new counter, morning light.",
+    "describeHint": "A sentence or two. Generated captions only mention what you describe here.",
+    "destinations": "Destinations",
+    "describeFirst": "Describe the media first",
+    "generatingAll": "Generating all captions…",
+    "generateAll": "Generate captions for all platforms",
+    "generatingFor": "Generating {platform}…",
+    "generating": "Generating…",
+    "regenerate": "Regenerate",
+    "generate": "Generate caption",
+    "captionFor": "{platform} caption",
+    "captionPlaceholder": "Write a caption or generate one from your brief.",
+    "note": "Editorial note (optional)",
+    "notePlaceholder": "e.g. Lead with the offer, keep hashtags to three.",
+    "noteHint": "Saved with the brand voice when you schedule. Future captions follow it.",
+    "scheduleFor": "Schedule for",
+    "backToEditing": "Back to editing",
+    "confirm": "Confirm schedule",
+    "review": "Review post"
+  },
+  "schedule": {
+    "status": {
+      "Scheduled": "Scheduled",
+      "Delivered": "Scheduled time passed",
+      "Canceled": "Canceled",
+      "Publishing": "Publishing",
+      "Published": "Published",
+      "Failed": "Not published"
+    },
+    "errors": {
+      "reconnect": "Reconnect {platform} in Channels, then schedule the post again.",
+      "failed": "Publishing failed. Check the post on {platform} before scheduling it again.",
+      "processing": "Instagram could not process this media ({status})."
+    },
+    "autoPublish": "Publishes automatically",
+    "stuck": "If this doesn’t change within a few minutes, check {platform} before scheduling it again.",
+    "reschedule": "Reschedule",
+    "cancelPost": "Cancel post",
+    "newTime": "New local time",
+    "cancelConfirm": "Cancel this post for all selected channels?",
+    "saving": "Saving…",
+    "confirmCancel": "Confirm cancellation",
+    "saveTime": "Save new time",
+    "keepSchedule": "Keep schedule",
+    "previous": "Previous",
+    "today": "Today",
+    "next": "Next",
+    "emptyDay": "Nothing scheduled this day.",
+    "title": "Project schedule",
+    "timesIn": "Times shown in {zone}",
+    "compose": "Compose a post",
+    "view": "Schedule view",
+    "modes": {
+      "list": "List",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month"
+    },
+    "posts": "Scheduled posts",
+    "upcoming": "Upcoming",
+    "clear": "Your schedule is clear.",
+    "clearHint": "Posts appear here once you confirm their captions and scheduled time.",
+    "history": "History"
+  },
+  "planner": {
+    "title": "Plan the week",
+    "noChannels": "Connect a channel to start queueing posts.",
+    "connectChannels": "Connect channels",
+    "lead": "Upload a batch of media and each file becomes a post on the next open day. Write a brief for each, generate every caption at once, then schedule the lot.",
+    "uploadIdle": "Upload a batch: one post per file",
+    "uploadHint": "Up to {limit, number} photos or videos. They also stay in the library.",
+    "uploadLabel": "Upload a batch of media",
+    "queued": "Queued {count, plural, one {# post} other {# posts}}. Add a brief to each.",
+    "generated": "Generated {count, plural, one {# caption} other {# captions}}.",
+    "scheduled": "Scheduled {count, plural, one {# post} other {# posts}}.",
+    "defaultTime": "Default time",
+    "generatingAll": "Generating captions…",
+    "generateMissing": "Generate missing captions ({count, number})",
+    "scheduleReady": "Schedule ready posts ({count, number})",
+    "waiting": "{count, plural, one {# queued post needs} other {# queued posts need}} a brief, or a media description, before captions can be generated.",
+    "confirmTitle": "Schedule {count, plural, one {# post} other {# posts}}?",
+    "timesIn": "Times are in {zone}.",
+    "scheduling": "Scheduling…",
+    "confirm": "Confirm schedule",
+    "keepEditing": "Keep editing",
+    "openSchedule": "Open the schedule",
+    "previousWeek": "Previous week",
+    "next7": "Next 7 days",
+    "followingWeek": "Following week",
+    "glance": "Week at a glance",
+    "queuedCount": "{count, number} queued",
+    "scheduledCount": "{count, number} scheduled",
+    "addPost": "Add a post",
+    "alreadyScheduled": "Already scheduled",
+    "nothingPlanned": "Nothing planned.",
+    "attachmentOrder": "Attachment order",
+    "removeMedia": "Remove {name}",
+    "addMedia": "Add media",
+    "attachMedia": "Attach media",
+    "attachMediaFor": "Attach media for the post on {date}",
+    "brief": "Brief",
+    "briefPlaceholder": "What should this post say?",
+    "describeMedia": "Describe the media",
+    "describePlaceholder": "e.g. Two baristas pouring latte art at the new counter.",
+    "describeHint": "Generated captions only mention what you describe here.",
+    "day": "Day",
+    "time": "Time",
+    "destinationsFor": "Destinations for the post on {date}",
+    "captionFor": "{platform} caption for the post on {date}",
+    "captionPlaceholder": "Write a caption or generate one.",
+    "describeFirst": "Add a brief and describe the media first",
+    "generating": "Generating…",
+    "regenerate": "Regenerate captions",
+    "fillMissing": "Fill missing captions",
+    "generate": "Generate captions",
+    "schedule": "Schedule",
+    "remove": "Remove"
+  },
+  "library": {
+    "title": "Media library",
+    "lead": "Upload photos and videos any time, up to {limit, number} at once. Describe each one and captions are written for every connected channel. To turn a batch into a week of posts, use Plan week.",
+    "uploadIdle": "Upload a batch of photos and videos",
+    "uploadHint": "Up to {limit, number} files: photos up to 8 MB, videos up to 40 MB each",
+    "uploadLabel": "Upload media to library",
+    "replaceDraft": "Replace your current draft with this media?",
+    "connectForCaptions": "<link>Connect a channel</link> to generate captions.",
+    "empty": "No media yet. Uploads appear here.",
+    "describe": "Describe this media",
+    "describePlaceholder": "e.g. Two baristas pouring latte art at the new counter, morning light.",
+    "generating": "Generating…",
+    "regenerate": "Regenerate captions",
+    "generate": "Generate captions",
+    "usePost": "Use in a post"
+  },
+  "notes": {
+    "title": "Editorial notes",
+    "lead": "Feedback from the composer and schedule lives here with the brand voice. Every generated caption follows these notes, with later notes taking priority.",
+    "empty": "No notes yet. Add one here, when you confirm a post, or from any post in the schedule.",
+    "addForPost": "Add an editorial note",
+    "add": "Add a note",
+    "postPlaceholder": "What should future captions keep or change? e.g. Great hook. Fewer emoji.",
+    "placeholder": "e.g. Always mention free delivery on product posts.",
+    "full": "You have {limit, number} notes. Remove one in Brand voice to add another.",
+    "hint": "Saved with the brand voice. Captions generated from now on follow it.",
+    "about": "About",
+    "allChannels": "All channels",
+    "platformCaption": "{platform} caption",
+    "saving": "Saving…",
+    "save": "Save note",
+    "removeLabel": "Remove note: {note}",
+    "removing": "Removing…",
+    "remove": "Remove"
+  },
+  "upload": {
+    "uploading": "Uploading…",
+    "converting": "Converting video…",
+    "convertingOf": "Converting video {file, number} of {total, number}…",
+    "uploadingOf": "Uploading {from, number}–{to, number} of {total, number}…"
+  },
+  "brand": {
+    "title": "Brand voice",
+    "lead": "Build the profile that guides your captions. Only your brand name is required.",
+    "sections": "Brand profile sections",
+    "goTo": "Go to section",
+    "step": "Step {step, number} of {total, number}",
+    "progress": "Onboarding progress",
+    "reviewStep": "Review profile",
+    "savedTitle": "Saved brand profile",
+    "reviewHint": "Check your answers before saving. You can edit any section.",
+    "savedHint": "These guidelines are used for new captions.",
+    "editSection": "Edit {section}",
+    "edit": "Edit",
+    "noDetails": "No details added.",
+    "advanced": "Advanced options",
+    "saveDraft": "Save draft",
+    "back": "Back",
+    "skip": "Skip",
+    "saveProfile": "Save profile",
+    "returnToReview": "Return to review",
+    "next": "Next",
+    "uploading": "Uploading…",
+    "saving": "Saving…",
+    "uploaded": "Files uploaded. Save your draft or finish your profile to keep this selection.",
+    "profileSaved": "Profile saved. New captions will use these guidelines.",
+    "draftSaved": "Draft saved. You can return to this step later.",
+    "remove": "Remove {item}",
+    "custom": "Custom {field}",
+    "addOwn": "Add your own option",
+    "add": "Add",
+    "chooseOption": "Choose an option",
+    "other": "Other (write your own)",
+    "writeOwn": "Write your own",
+    "nouns": {
+      "colour": "colour {n, number}",
+      "url": "URL {n, number}",
+      "font": "font {n, number}",
+      "message": "message {n, number}",
+      "logo": "logo {n, number}",
+      "asset": "asset {n, number}"
+    },
+    "addNoun": {
+      "colour": "Add colour",
+      "url": "Add URL",
+      "font": "Add font",
+      "message": "Add message"
+    },
+    "platformPlaceholder": "What works on {platform}?",
+    "replaceLogo": "Replace logo",
+    "chooseLogo": "Choose logo",
+    "chooseFiles": "Choose brand files",
+    "logoTypes": "JPEG, PNG or WebP · up to 8 MB",
+    "fileTypes": "Images or PDF up to 8 MB · MP4 or WebM up to 40 MB",
+    "existingFor": "Use an existing file for {field}",
+    "existing": "Use a file from this project…",
+    "required": "Required"
+  },
+  "errors": {
+    "enterField": "Enter {label} (up to {max, number} characters).",
+    "projectUnavailable": "Project unavailable. Choose another project.",
+    "chooseProject": "Choose an existing project.",
+    "projectGone": "Project unavailable. Refresh the workspace.",
+    "unsupportedDestination": "Select a supported destination.",
+    "mediaLimit": "Choose up to ten different photos or one video.",
+    "mediaNotInProject": "Choose photos or videos uploaded to this project.",
+    "videoAlone": "Use one video on its own, or choose photos.",
+    "attachmentUnavailable": "This attachment is unavailable.",
+    "mediaRemoved": "This media is no longer in the library.",
+    "futureTime": "Choose a date and time in the future.",
+    "clockChange": "This local time falls in a clock change. Choose another time.",
+    "validLocalTime": "Choose a valid local date and time.",
+    "selectDestination": "Select at least one destination.",
+    "addBrief": "Add a brief.",
+    "addCaptions": "Add a caption for each destination.",
+    "profileChanged": "This profile changed in another tab. Reopen Brand voice before saving.",
+    "profileStatus": "Choose a valid profile status.",
+    "onboardingStep": "Choose a valid onboarding step.",
+    "chooseDestination": "Choose at least one connected destination.",
+    "connectChannelFirst": "Connect the selected channel first.",
+    "instagramMedia": "Instagram publishing needs JPEG photos or one MP4 video. Change the media or remove Instagram.",
+    "reopenComposer": "Reopen the composer and try again.",
+    "choosePost": "Choose an existing post.",
+    "postClosed": "This post is already closed. Refresh the schedule.",
+    "unsupportedAction": "Choose a supported workspace action.",
+    "reopenNote": "Reopen the note and try again.",
+    "tooManyNotes": "Keep up to {limit, number} editorial notes. Remove an older one in Brand voice first.",
+    "noteDestination": "Choose a destination of this post.",
+    "tokenKey": "Set TOKEN_KEY (32 random bytes, base64) in .env.local and restart.",
+    "invalidEmail": "Enter a valid email address.",
+    "passwordLength": "Use a password of 8 to 128 characters.",
+    "tooManyAttempts": "Too many attempts. Wait 15 minutes and try again.",
+    "accountExists": "An account with this email already exists. Sign in instead.",
+    "wrongPassword": "Email or password is incorrect.",
+    "signInRequired": "Sign in to open the workspace.",
+    "linkExpired": "This link has expired.",
+    "uploadTooLarge": "This upload is too large. Choose smaller files.",
+    "sendBody": "Send a request body.",
+    "uploadCount": "Choose up to ten photos or one video.",
+    "uploadTypesBrand": "Choose a JPEG, PNG, WebP, MP4, WebM, or PDF file.",
+    "uploadTypes": "Choose JPEG, PNG, WebP, MP4, or WebM files.",
+    "uploadSize": "Use photos up to 8 MB or a video up to 40 MB.",
+    "uploadAgain": "Upload the files again.",
+    "uploadUnfinished": "The upload did not finish. Try again.",
+    "contentMismatch": "The file contents do not match its type. Export the media again.",
+    "connectDestination": "Connect the destination first.",
+    "connectForCaptions": "Connect a channel before generating captions.",
+    "anthropicKey": "Set ANTHROPIC_API_KEY in .env.local and restart, or enter your caption below.",
+    "captionUnavailable": "Caption generation is unavailable. Retry or edit the caption manually.",
+    "wrongOrigin": "Open the workspace at its own web address and try again.",
+    "sendJson": "Send a JSON request.",
+    "unreadable": "The request could not be read. Try again.",
+    "chooseAction": "Choose a workspace action.",
+    "server": "The workspace could not be saved or opened. Check the storage connection and retry.",
+    "storageConfig": "Configure the private R2 bucket in .env.local and restart the server.",
+    "brandProfile": "Enter a brand profile.",
+    "brandField": "{field} — {reason}",
+    "useSectionFields": "Use the fields in this section.",
+    "enterText": "Enter text.",
+    "maxPerEntry": "Use up to {max, number} characters per entry.",
+    "fullUrl": "Enter a full https:// or http:// URL.",
+    "publicUrl": "Use a public http:// or https:// URL without credentials.",
+    "hexColour": "Choose a six-digit hex colour.",
+    "projectFile": "Choose a file uploaded to this project.",
+    "maxEntries": "Use up to 40 entries.",
+    "chooseUpTo": "Choose up to {limit, number}.",
+    "platformGuidelines": "Enter guidelines for a selected platform.",
+    "brandName": "Enter your brand name to finish.",
+    "brandUploadCount": "Choose up to ten files at a time and up to 40 brand assets in total.",
+    "brandUploadType": "Choose a supported file type shown under the upload button.",
+    "brandUploadSize": "Choose non-empty images or PDFs up to 8 MB, or videos up to 40 MB.",
+    "videoConvert": "This video could not be converted on this device. Export it as an MP4 under 40 MB and try again. ({reason})",
+    "videoTooLong": "This video is too long to upload. Trim it to under 4 minutes and try again.",
+    "uploadFailed": "The upload did not finish. Check your connection and try again.",
+    "uploadedSome": "Uploaded {done, number} of {total, number} files. {reason}",
+    "batchLimit": "Choose up to {limit, number} files at a time.",
+    "captionsFailed": "{failed, number} of {total, number} captions could not be generated. Retry or edit them below.",
+    "scheduledSome": "Scheduled {done, number} of {total, number} posts. The rest show what to fix.",
+    "requestFailed": "The request failed. Try again.",
+    "offline": "Could not reach the workspace. Check your connection and try again.",
+    "unknown": "Something went wrong. Try again."
+  },
+  "labels": {
+    "projectName": "a project name",
+    "brandDescription": "brand description",
+    "audience": "audience",
+    "tone": "tone",
+    "exampleCopy": "example copy",
+    "wordsToAvoid": "words to avoid",
+    "brandVoice": "your brand voice",
+    "postBrief": "a post brief",
+    "caption": "a caption for {platform}",
+    "editorialNote": "an editorial note",
+    "mediaDescription": "a short description of the attached media",
+    "mediaSummary": "a short description of the media"
+  },
+  "brandSections": {
+    "0": {
+      "title": "Brand basics",
+      "hint": "Introduce your business in your own words."
+    },
+    "1": {
+      "title": "Brand personality",
+      "hint": "Choose the qualities you want people to remember."
+    },
+    "2": {
+      "title": "Audience & communication",
+      "hint": "Describe who you speak to and how you sound."
+    },
+    "3": {
+      "title": "Key messages & content",
+      "hint": "Choose the ideas you want to share most often."
+    },
+    "4": {
+      "title": "Visual identity",
+      "hint": "Share the colours, images, and files that represent your brand."
+    },
+    "5": {
+      "title": "Content guidelines",
+      "hint": "Set preferences for everyday writing."
+    },
+    "6": {
+      "title": "Social media preferences",
+      "hint": "Choose where your brand appears and what you like to share."
+    },
+    "7": {
+      "title": "Brand rules & approval",
+      "hint": "Tell writers what to avoid and when to ask for a review."
+    }
+  },
+  "brandFields": {
+    "brand_identity": {
+      "name": {
+        "label": "Brand name",
+        "example": "Sunday Studio"
+      },
+      "tagline": {
+        "label": "Tagline or slogan",
+        "example": "Made for everyday life"
+      },
+      "website": {
+        "label": "Website",
+        "example": "https://example.com"
+      },
+      "industry": {
+        "label": "Industry or business category"
+      },
+      "description": {
+        "label": "Brand description",
+        "hint": "Describe what your business does in 1–3 sentences."
+      },
+      "offerings": {
+        "label": "Products or services",
+        "example": "Weekend classes and online workshops"
+      },
+      "market": {
+        "label": "Primary location or market",
+        "example": "Bangkok and online across Thailand"
+      }
+    },
+    "brand_personality": {
+      "traits": {
+        "label": "Personality",
+        "hint": "Choose up to five, including your own words."
+      },
+      "values": {
+        "label": "Brand values",
+        "example": "We explain our prices openly and make time for questions."
+      },
+      "impression": {
+        "label": "Customer impression",
+        "hint": "How should people feel when interacting with your brand?"
+      }
+    },
+    "target_audience": {
+      "audience": {
+        "label": "Target audience",
+        "hint": "Who are your ideal customers or community?"
+      },
+      "terminology": {
+        "label": "What do you call your audience?",
+        "example": "Guests, members, or clients"
+      }
+    },
+    "communication_preferences": {
+      "language": {
+        "label": "Primary language"
+      },
+      "secondary": {
+        "label": "Secondary languages"
+      },
+      "cta": {
+        "label": "How often should posts ask readers to take action?"
+      }
+    },
+    "brand_voice": {
+      "tone": {
+        "label": "Brand voice"
+      },
+      "style": {
+        "label": "Preferred writing style",
+        "example": "Use short sentences and explain technical terms."
+      },
+      "previous": {
+        "label": "Existing voice notes",
+        "hint": "Your previously saved guidance. Keep or edit it here."
+      }
+    },
+    "key_messages": {
+      "messages": {
+        "label": "Key brand messages",
+        "example": "Every class is open to beginners."
+      }
+    },
+    "content_pillars": {
+      "topics": {
+        "label": "Main content topics",
+        "hint": "What subjects should your brand regularly talk about?",
+        "example": "Getting started"
+      },
+      "goals": {
+        "label": "Content goals"
+      },
+      "approach": {
+        "label": "Content approach"
+      }
+    },
+    "visual_identity": {
+      "primary": {
+        "label": "Primary brand colour"
+      },
+      "style": {
+        "label": "Visual style"
+      },
+      "logo": {
+        "label": "Brand logo"
+      },
+      "assets": {
+        "label": "Brand assets"
+      },
+      "secondary": {
+        "label": "Secondary colours"
+      },
+      "accents": {
+        "label": "Accent colours"
+      },
+      "fonts": {
+        "label": "Preferred fonts",
+        "example": "Inter for headlines"
+      },
+      "imagery": {
+        "label": "Photography and imagery",
+        "example": "Natural light and real people at work"
+      },
+      "avoid": {
+        "label": "Visual styles to avoid"
+      }
+    },
+    "content_guidelines": {
+      "use": {
+        "label": "Words or phrases to use",
+        "example": "Learning partners"
+      },
+      "avoid": {
+        "label": "Words or phrases to avoid",
+        "example": "Guaranteed results"
+      },
+      "emoji": {
+        "label": "Emoji usage"
+      },
+      "humour": {
+        "label": "Humour preference"
+      },
+      "promotion": {
+        "label": "Promotional tone"
+      },
+      "hashtags": {
+        "label": "Preferred hashtags",
+        "example": "#MadeLocally"
+      },
+      "rules": {
+        "label": "Additional content rules",
+        "example": "Use sentence case in headings."
+      }
+    },
+    "social_platforms": {
+      "active": {
+        "label": "Active platforms"
+      },
+      "formats": {
+        "label": "Preferred content formats"
+      },
+      "frequency": {
+        "label": "Content frequency",
+        "example": "Two posts a week"
+      },
+      "references": {
+        "label": "Reference accounts or inspiration",
+        "example": "https://example.com/inspiration"
+      },
+      "guidelines": {
+        "label": "Platform-specific guidelines"
+      }
+    },
+    "approval_rules": {
+      "rules": {
+        "label": "Non-negotiable brand rules",
+        "example": "Get consent before naming a customer."
+      },
+      "avoid": {
+        "label": "Topics to avoid"
+      },
+      "notes": {
+        "label": "Additional notes"
+      },
+      "verify": {
+        "label": "Claims requiring verification",
+        "example": "Check all prices and product performance claims."
+      },
+      "review": {
+        "label": "Content requiring human approval"
+      }
+    }
+  },
+  "brandOptions": {
+    "Hospitality": "Hospitality",
+    "Education": "Education",
+    "Retail": "Retail",
+    "Software": "Software",
+    "Professional services": "Professional services",
+    "Personal brand": "Personal brand",
+    "Professional": "Professional",
+    "Friendly": "Friendly",
+    "Playful": "Playful",
+    "Sophisticated": "Sophisticated",
+    "Minimalist": "Minimalist",
+    "Bold": "Bold",
+    "Creative": "Creative",
+    "Warm": "Warm",
+    "Trustworthy": "Trustworthy",
+    "Innovative": "Innovative",
+    "Calm": "Calm",
+    "Energetic": "Energetic",
+    "Approachable": "Approachable",
+    "English": "English",
+    "Spanish": "Spanish",
+    "French": "French",
+    "German": "German",
+    "Portuguese": "Portuguese",
+    "Arabic": "Arabic",
+    "Hindi": "Hindi",
+    "Mandarin Chinese": "Mandarin Chinese",
+    "Japanese": "Japanese",
+    "Thai": "Thai",
+    "Conversational": "Conversational",
+    "Formal": "Formal",
+    "Educational": "Educational",
+    "Inspirational": "Inspirational",
+    "Humorous": "Humorous",
+    "Direct": "Direct",
+    "Storytelling": "Storytelling",
+    "Empathetic": "Empathetic",
+    "Authoritative": "Authoritative",
+    "Brand Awareness": "Brand Awareness",
+    "Community Engagement": "Community Engagement",
+    "Lead Generation": "Lead Generation",
+    "Sales": "Sales",
+    "Customer Retention": "Customer Retention",
+    "Brand Storytelling": "Brand Storytelling",
+    "Behind the Scenes": "Behind the Scenes",
+    "Product-Focused": "Product-Focused",
+    "Story-Driven": "Story-Driven",
+    "Promotional": "Promotional",
+    "Community-Focused": "Community-Focused",
+    "Entertaining": "Entertaining",
+    "Informational": "Informational",
+    "Frequent": "Frequent",
+    "Occasional": "Occasional",
+    "Only When Relevant": "Only When Relevant",
+    "Minimal": "Minimal",
+    "Modern": "Modern",
+    "Editorial": "Editorial",
+    "Corporate": "Corporate",
+    "Natural": "Natural",
+    "Luxury": "Luxury",
+    "Colourful": "Colourful",
+    "Documentary": "Documentary",
+    "None": "None",
+    "Moderate": "Moderate",
+    "Subtle": "Subtle",
+    "Casual": "Casual",
+    "Balanced": "Balanced",
+    "Sales-Focused": "Sales-Focused",
+    "Images": "Images",
+    "Carousels": "Carousels",
+    "Short Videos": "Short Videos",
+    "Long Videos": "Long Videos",
+    "Stories": "Stories",
+    "Articles": "Articles",
+    "Infographics": "Infographics",
+    "All Content": "All Content",
+    "Promotional Content": "Promotional Content",
+    "Customer Stories": "Customer Stories",
+    "Humour": "Humour",
+    "Sensitive Topics": "Sensitive Topics",
+    "AI-Generated Images": "AI-Generated Images"
+  }
+}

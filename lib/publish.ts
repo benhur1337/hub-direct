@@ -100,6 +100,8 @@ async function run({ projectId, postId, platform }: Job) {
           : error instanceof GraphError
             ? error.message
             : "Publishing failed. Check the post on " + platform + " before scheduling it again.",
+      // Meta's own error text has no translation, so only the two fixed messages get a code.
+      ...(code === 190 ? { errorCode: "reconnect" } : error instanceof GraphError ? {} : { errorCode: "failed" }),
     };
   }
   await publisherProject(projectId, (project) => {
@@ -153,7 +155,7 @@ async function instagram(user: string, token: string, dest: Destination, media: 
   if (status_code === "IN_PROGRESS") return { status: "Publishing" };
   if (status_code === "PUBLISHED") return { status: "Published" };
   if (status_code !== "FINISHED")
-    return { status: "Failed", error: "Instagram could not process this media (" + status_code + ")." };
+    return { status: "Failed", error: "Instagram could not process this media (" + status_code + ").", errorCode: "processing" };
   const { id } = await graph(`/${user}/media_publish`, { ...auth, creation_id: dest.container });
   const { permalink } = await graph(`/${id}`, { ...auth, fields: "permalink" }, "GET").catch(() => ({}));
   return { status: "Published", ...(permalink ? { url: permalink } : {}) };

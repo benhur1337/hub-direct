@@ -126,3 +126,6 @@
   .land-intro, .land-faq, .work-grid { grid-template-columns: 1fr; gap: 30px; }
   .index-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Thai headline: stacked marks would collide at the Latin .8 line height. */
+.land-hero h1:lang(th) { line-height: 1.12; letter-spacing: 0; font-size: clamp(54px, 7vw, 92px); }
+.land-faq h2:lang(th) { line-height: 1.2; }

@@ -216,6 +216,36 @@ try {
   created = true;
   await migrate(drizzle(pool), { migrationsFolder: "./drizzle" });
   await start();
+  // Languages: /en and /th. "/" picks the saved choice (NEXT_LOCALE), then the browser's language.
+  const site = new URL("/", url);
+  const landing = async (headers) => {
+    const reply = await fetch(site, { headers, redirect: "manual" });
+    assert.equal(reply.status, 307);
+    return new URL(reply.headers.get("location"), site).pathname;
+  };
+  const thaiBrowser = { "accept-language": "th-TH,th;q=0.9,en;q=0.5" };
+  assert.equal(await landing(thaiBrowser), "/th");
+  assert.equal(await landing({ ...thaiBrowser, cookie: "NEXT_LOCALE=en" }), "/en");
+  assert.equal(await landing({}), "/en");
+  // Meta's return link keeps its query through the redirect.
+  const back = await fetch(new URL("/?project=p1&meta=linked", url), { headers: thaiBrowser, redirect: "manual" });
+  assert.equal(back.headers.get("location").replace(/^https?:\/\/[^/]+/, ""), "/th?project=p1&meta=linked");
+  const thai = await fetch(new URL("/th", url));
+  assert.equal(thai.status, 200);
+  const thaiHtml = await thai.text();
+  assert.match(thaiHtml, /<html lang="th"/);
+  assert.match(thaiHtml, /พื้นที่ทำงาน/);
+  const english = await fetch(new URL("/en", url));
+  assert.equal(english.status, 200);
+  assert.match(await english.text(), /<html lang="en"/);
+  assert.equal((await fetch(new URL("/th/nowhere", url))).status, 404);
+  const thaiError = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-locale": "th" },
+    body: JSON.stringify({ action: "create" }),
+  });
+  assert.equal(thaiError.status, 401);
+  assert.equal((await thaiError.json()).error, "โปรดเข้าสู่ระบบเพื่อเปิดพื้นที่ทำงาน");
   await request({ action: "create" }, 401);
   const owner = { email: "owner@example.test", password: "correct horse battery" };
   await request({ action: "signup", ...owner });
@@ -392,7 +422,7 @@ try {
   await start();
   const state = await (await fetch(url, { headers: { cookie } })).json();
   assert.equal(state.projects.length, 2);
-  const page = await fetch(new URL("/", url), { headers: { cookie } });
+  const page = await fetch(new URL("/en", url), { headers: { cookie } });
   assert.equal(page.status, 200);
   assert.match(await page.text(), /Grove/);
   const first = state.projects.find((p) => p.id === a.id);

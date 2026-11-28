@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { useLocale, useTranslations } from "next-intl";
+import { Problem } from "@/lib/problem";
 import {
   noteLength,
   platforms,
@@ -16,11 +18,11 @@ import {
   localInput,
   mediaAccept,
   Media,
-  message,
   PlatformMark,
   prettyTime,
   uploadMedia,
   UploadStatus,
+  useErrorText,
 } from "./ui";
 
 type Draft = {
@@ -69,6 +71,10 @@ export function Composer({
   update: (project: Project) => void;
   navigate: (view: "schedule" | "channels") => void;
 }) {
+  const t = useTranslations("composer");
+  const tUpload = useTranslations("upload");
+  const locale = useLocale();
+  const errorText = useErrorText();
   const [draft, setDraft] = useState(() => readDraft(project));
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState("");
@@ -93,7 +99,7 @@ export function Composer({
     try {
       await fn();
     } catch (err) {
-      setError(message(err));
+      setError(errorText(err));
     } finally {
       setBusy("");
       setPercent(null);
@@ -118,20 +124,17 @@ export function Composer({
       Number.isNaN(date.getTime()) ||
       date.getTime() <= Date.now()
     )
-      throw new Error("Choose a date and time in the future.");
-    if (localInput(date) !== draft.when)
-      throw new Error(
-        "This local time falls in a clock change. Choose another time.",
-      );
+      throw new Problem("futureTime");
+    if (localInput(date) !== draft.when) throw new Problem("clockChange");
     return date.toISOString();
   }
   if (!project.channels.length)
     return (
       <section className="compose-intro">
-        <h2>Compose a post</h2>
-        <p>Choose a channel for your first draft.</p>
+        <h2>{t("title")}</h2>
+        <p>{t("noChannels")}</p>
         <button className="primary" onClick={() => navigate("channels")}>
-          Connect channels
+          {t("connectChannels")}
           <Icon name="arrow" />
         </button>
       </section>
@@ -139,21 +142,16 @@ export function Composer({
   return (
     <div className="compose-layout">
       <div className="compose-heading">
-        <h2>{review ? "Review your post" : "Compose a post"}</h2>
-        <p className="lead">
-          {review
-            ? "Check the captions, media order, and time before scheduling."
-            : "Start with a brief, then tailor the caption for each destination."}
-        </p>
+        <h2>{review ? t("reviewTitle") : t("title")}</h2>
+        <p className="lead">{review ? t("reviewLead") : t("lead")}</p>
       </div>
       <form
         className="form-panel"
         onSubmit={(e) => {
           e.preventDefault();
-          void work(review ? "Scheduling…" : "Reviewing…", async () => {
+          void work(review ? t("scheduling") : t("reviewing"), async () => {
             const when = checkTime();
-            if (!draft.selected.length)
-              throw new Error("Select at least one destination.");
+            if (!draft.selected.length) throw new Problem("selectDestination");
             if (!review) {
               setReview(true);
               window.scrollTo({ top: 0 });
@@ -184,7 +182,7 @@ export function Composer({
       >
         <fieldset
           className="draft-fields"
-          aria-label={review ? "Post details to review" : "Post content"}
+          aria-label={review ? t("detailsToReview") : t("content")}
           tabIndex={review ? 0 : undefined}
           disabled={!!busy}
           key={review ? "review" : "edit"}
@@ -194,29 +192,25 @@ export function Composer({
               <h3>{draft.brief}</h3>
             ) : (
               <>
-                <Field label="Post brief">
+                <Field label={t("brief")}>
                   <textarea
                     required
                     maxLength={4000}
                     value={draft.brief}
                     onChange={(e) => patch({ brief: e.target.value })}
-                    placeholder="What would you like this post to say?"
+                    placeholder={t("briefPlaceholder")}
                   />
                 </Field>
                 <div className="field">
                   <span>
-                    Media <small>Optional</small>
+                    {t("media")} <small>{t("optional")}</small>
                   </span>
                   <div className="upload">
                     <Icon name="upload" size={23} />
-                    <UploadStatus busy={busy} percent={percent} idle="Choose photos or a video" />
-                    <small>
-                      {assets.length
-                        ? assets.length + " attached · add more, up to 10 photos or 1 video"
-                        : "Up to 10 photos (8 MB each) or 1 video (40 MB)"}
-                    </small>
+                    <UploadStatus busy={busy} percent={percent} idle={t("chooseMedia")} />
+                    <small>{assets.length ? t("attached", { count: assets.length }) : t("mediaLimits")}</small>
                     <input
-                      aria-label="Upload media"
+                      aria-label={t("uploadMedia")}
                       type="file"
                       accept={mediaAccept}
                       multiple
@@ -224,12 +218,12 @@ export function Composer({
                         const files = Array.from(e.target.files || []);
                         e.target.value = "";
                         if (!files.length) return;
-                        void work("Uploading…", async () => {
+                        void work(tUpload("uploading"), async () => {
                           const ready = await forPosting(files, (p) => {
-                            setBusy("Converting video…");
+                            setBusy(tUpload("converting"));
                             setPercent(p);
                           });
-                          setBusy("Uploading…");
+                          setBusy(tUpload("uploading"));
                           setPercent(0);
                           const added = await uploadMedia(
                             project.id,
@@ -252,7 +246,7 @@ export function Composer({
               </>
             )}
             {assets.length > 0 && (
-              <ol className="media-grid" aria-label="Attachment order">
+              <ol className="media-grid" aria-label={t("attachmentOrder")}>
                 {assets.map((a, i) => (
                   <motion.li key={a.id} layout="position" layoutDependency={draft.media}>
                     <Media project={project.id} asset={a} />
@@ -263,7 +257,7 @@ export function Composer({
                       <div className="media-actions">
                         <button
                           type="button"
-                          aria-label={"Move " + a.name + " earlier"}
+                          aria-label={t("moveEarlier", { name: a.name })}
                           disabled={!i}
                           onClick={() => move(i, -1)}
                         >
@@ -271,7 +265,7 @@ export function Composer({
                         </button>
                         <button
                           type="button"
-                          aria-label={"Move " + a.name + " later"}
+                          aria-label={t("moveLater", { name: a.name })}
                           disabled={i === assets.length - 1}
                           onClick={() => move(i, 1)}
                         >
@@ -279,7 +273,7 @@ export function Composer({
                         </button>
                         <button
                           type="button"
-                          aria-label={"Remove " + a.name}
+                          aria-label={t("remove", { name: a.name })}
                           onClick={() =>
                             patch({
                               media: draft.media.filter((id) => id !== a.id),
@@ -295,20 +289,20 @@ export function Composer({
               </ol>
             )}
             {!review && assets.length > 0 && (
-              <Field label="Describe the media">
+              <Field label={t("describeMedia")}>
                 <textarea
                   required
                   maxLength={1000}
                   value={draft.mediaDescription || ""}
                   onChange={(e) => patch({ mediaDescription: e.target.value })}
-                  placeholder="e.g. Two baristas pouring latte art at the new counter, morning light."
+                  placeholder={t("describePlaceholder")}
                 />
-                <small>A sentence or two. Generated captions only mention what you describe here.</small>
+                <small>{t("describeHint")}</small>
               </Field>
             )}
             {!review && (
               <div className="field">
-                <span>Destinations</span>
+                <span>{t("destinations")}</span>
                 <div className="choices">
                   {platforms
                     .filter((p) => project.channels.includes(p))
@@ -339,9 +333,9 @@ export function Composer({
                 type="button"
                 className="secondary"
                 disabled={!!busy || !draft.brief.trim() || describe}
-                title={describe ? "Describe the media first" : undefined}
+                title={describe ? t("describeFirst") : undefined}
                 onClick={() =>
-                  void work("Generating all", async () => {
+                  void work(t("generatingAll"), async () => {
                     const one = async (p: Platform) => {
                         const data = await api({
                           action: "generate",
@@ -364,9 +358,7 @@ export function Composer({
                 }
               >
                 <Icon name="spark" size={15} />
-                {busy === "Generating all"
-                  ? "Generating all captions…"
-                  : "Generate captions for all platforms"}
+                {busy === t("generatingAll") ? t("generatingAll") : t("generateAll")}
               </button>
             )}
             {draft.selected.map((p) => (
@@ -381,9 +373,9 @@ export function Composer({
                       type="button"
                       className="text-button"
                       disabled={!!busy || !draft.brief.trim() || describe}
-                      title={describe ? "Describe the media first" : undefined}
+                      title={describe ? t("describeFirst") : undefined}
                       onClick={() =>
-                        void work("Generating " + p, async () => {
+                        void work(t("generatingFor", { platform: p }), async () => {
                           const data = await api({
                             action: "generate",
                             project: project.id,
@@ -400,11 +392,11 @@ export function Composer({
                       }
                     >
                       <Icon name="spark" size={15} />
-                      {busy === "Generating " + p
-                        ? "Generating…"
+                      {busy === t("generatingFor", { platform: p })
+                        ? t("generating")
                         : draft.captions[p]
-                          ? "Regenerate"
-                          : "Generate caption"}
+                          ? t("regenerate")
+                          : t("generate")}
                     </button>
                   )}
                 </div>
@@ -412,7 +404,7 @@ export function Composer({
                   <p className="preserve">{draft.captions[p]}</p>
                 ) : (
                   <textarea
-                    aria-label={p + " caption"}
+                    aria-label={t("captionFor", { platform: p })}
                     required
                     maxLength={6000}
                     value={draft.captions[p] || ""}
@@ -421,7 +413,7 @@ export function Composer({
                         captions: { ...draft.captions, [p]: e.target.value },
                       })
                     }
-                    placeholder="Write a caption or generate one from your brief."
+                    placeholder={t("captionPlaceholder")}
                   />
                 )}
               </div>
@@ -430,27 +422,27 @@ export function Composer({
         </fieldset>
         <div className="draft-controls">
           {review && (
-            <Field label="Editorial note (optional)">
+            <Field label={t("note")}>
               <textarea
                 maxLength={noteLength}
                 disabled={!!busy}
                 value={draft.note || ""}
                 onChange={(e) => patch({ note: e.target.value })}
-                placeholder="e.g. Lead with the offer, keep hashtags to three."
+                placeholder={t("notePlaceholder")}
               />
-              <small>Saved with the brand voice when you schedule. Future captions follow it.</small>
+              <small>{t("noteHint")}</small>
             </Field>
           )}
           {review ? (
             <p className="time-line">
               <Icon name="clock" />
               <span>
-                {prettyTime(draft.when)}
+                {prettyTime(draft.when, locale)}
                 <small>{zone}</small>
               </span>
             </p>
           ) : (
-            <Field label="Schedule for">
+            <Field label={t("scheduleFor")}>
               <input
                 type="datetime-local"
                 disabled={!!busy}
@@ -477,11 +469,11 @@ export function Composer({
                   setError("");
                 }}
               >
-                Back to editing
+                {t("backToEditing")}
               </button>
             )}
             <button className="primary" disabled={!!busy}>
-              {busy || (review ? "Confirm schedule" : "Review post")}
+              {busy || (review ? t("confirm") : t("review"))}
               <Icon name={review ? "calendar" : "arrow"} />
             </button>
           </div>
