@@ -22,6 +22,8 @@ const paths = {
   spark: "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z",
   week: "M3 4h18v16H3ZM3 9h18M9 9v11m6-11v11",
   note: "M5 3h10l4 4v14H5ZM14 3v5h5M8 13h8M8 17h5",
+  sun: "M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
+  moon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z",
 };
 export function Icon({
   name,

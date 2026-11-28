@@ -45,7 +45,8 @@
 .fluid .blob { display: block; }
 .fluid .sphere { visibility: hidden; }
 /* Dimmed so light text stays readable where it passes over the sphere. */
-@media (prefers-color-scheme: dark) { .sphere-orbit > * { filter: brightness(.45) saturate(1.3); } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sphere-orbit > * { filter: brightness(.45) saturate(1.3); } }
+:root[data-theme="dark"] .sphere-orbit > * { filter: brightness(.45) saturate(1.3); }
 .sphere-orbit::before, .sphere-orbit::after { content: ""; border: 1px dashed var(--color-ash); }
 .sphere-orbit::before { inset: -12%; }
 .sphere-orbit::after { inset: -26%; }
