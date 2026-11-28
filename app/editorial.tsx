@@ -8,7 +8,7 @@ import {
   type Post,
   type Project,
 } from "@/lib/model";
-import { api, Field, Icon, PlatformMark, useErrorText } from "./ui";
+import { api, Field, Icon, PlatformMark, useErrorText, Spinner } from "./ui";
 
 /** Adds a note to the brand voice, optionally about one post and one of its channels. */
 function NoteForm({
@@ -79,7 +79,7 @@ function NoteForm({
           </label>
         )}
         <button className="secondary" disabled={busy || full || !text.trim()}>
-          <Icon name="note" size={15} />
+          {busy ? <Spinner /> : <Icon name="note" size={15} />}
           {busy ? t("saving") : t("save")}
         </button>
       </div>
@@ -134,7 +134,7 @@ function NoteItem({
             });
         }}
       >
-        <Icon name="close" size={15} />
+        {busy ? <Spinner /> : <Icon name="close" size={15} />}
         {busy ? t("removing") : t("remove")}
       </button>
       {error && (

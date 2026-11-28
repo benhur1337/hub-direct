@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { platforms, type Asset, type Platform, type Post, type Project } from "@/lib/model";
 import { Problem, type ErrorKey } from "@/lib/problem";
+import type { Seed } from "./brand-calendar";
 import {
   api,
   cachedBatch,
@@ -19,6 +20,7 @@ import {
   UploadStatus,
   useBatchLabel,
   useErrorText,
+  Spinner,
 } from "./ui";
 
 /** A queued post. `when` is a local datetime-local value, like the composer's. */
@@ -73,10 +75,13 @@ export function Planner({
   project,
   update,
   navigate,
+  seed,
 }: {
   project: Project;
   update: (project: Project) => void;
   navigate: (view: "channels" | "schedule") => void;
+  /** A brand calendar date to queue as a draft on that day. */
+  seed?: Seed;
 }) {
   const t = useTranslations("planner");
   const tUpload = useTranslations("upload");
@@ -84,9 +89,15 @@ export function Planner({
   const errorText = useErrorText();
   const batchLabel = useBatchLabel();
   const [saved] = useState(() => readSaved(project));
-  const [drafts, setDrafts] = useState(saved.drafts);
+  const [drafts, setDrafts] = useState(() =>
+    seed ? [...saved.drafts, { ...blank(project, at(new Date(seed.date + "T00:00"), saved.time)), brief: seed.brief }] : saved.drafts,
+  );
   const [time, setTime] = useState(saved.time);
-  const [week, setWeek] = useState(0);
+  // Opens on the week holding the calendar date, so the new draft is in view.
+  const [week, setWeek] = useState(() =>
+    // Rounded to whole days first so a daylight-saving hour cannot push it into the wrong week.
+    seed ? Math.max(0, Math.floor(Math.round((new Date(seed.date + "T00:00").getTime() - startOfToday().getTime()) / 86400000) / 7)) : 0,
+  );
   const [busy, setBusy] = useState("");
   const [percent, setPercent] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -271,7 +282,7 @@ export function Planner({
               disabled={!!busy || !missing}
               onClick={() => void work(t("generatingAll"), () => generateAll(drafts))}
             >
-              <Icon name="spark" size={15} />
+              {busy === t("generatingAll") ? <Spinner /> : <Icon name="spark" size={15} />}
               {busy === t("generatingAll") ? busy : t("generateMissing", { count: missing })}
             </button>
             <button
@@ -314,6 +325,7 @@ export function Planner({
                 disabled={!!busy}
                 onClick={() => void work(t("scheduling"), () => scheduleAll(confirmList.map((d) => d.id)))}
               >
+                {busy === t("scheduling") && <Spinner />}
                 {busy === t("scheduling") ? busy : t("confirm")}
               </button>
               <button className="secondary" disabled={!!busy} autoFocus onClick={() => setConfirming(null)}>
@@ -612,7 +624,7 @@ function PlanCard({
             title={canGenerate(d) ? undefined : t("describeFirst")}
             onClick={generate}
           >
-            <Icon name="spark" size={15} />
+            {busy === "generate:" + d.id ? <Spinner /> : <Icon name="spark" size={15} />}
             {busy === "generate:" + d.id
               ? t("generating")
               : d.selected.every((p) => d.captions[p]?.trim())

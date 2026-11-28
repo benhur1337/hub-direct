@@ -162,12 +162,12 @@ input::placeholder, textarea::placeholder { color: #62625f; }
 input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--color-ink); }
 fieldset { padding: 0; margin: 0; min-width: 0; border: 0; }
 details .field { margin-top: 15px; }
-.channel-row, .post > summary { display: flex; align-items: center; gap: 12px; padding: 15px 0; }
+.channel-row, .post > summary, .event-row { display: flex; align-items: center; gap: 12px; padding: 15px 0; }
 .channel-row + .channel-row { border-top: 1px solid var(--color-ash); margin-top: 0; }
 .channel-row .secondary, .connected { margin-left: auto; }
 .empty { border-block: 1px solid var(--color-ash); padding-block: 30px; }
 .empty > strong { display: block; margin: 8px 0; }
-.post { border-top: 1px solid var(--color-ash); }
+.post, .event-row { border-top: 1px solid var(--color-ash); }
 .post:last-child { border-bottom: 1px solid var(--color-ash); }
 .post > summary, .landing summary { list-style: none; }
 .post > summary::-webkit-details-marker, .landing summary::-webkit-details-marker { display: none; }
@@ -176,6 +176,15 @@ details .field { margin-top: 15px; }
 .post-summary strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .date-tile { min-width: 46px; border-right: 1px solid var(--color-ash); font-size: 28px; line-height: 1; }
 .date-tile small { display: block; }
+.spinner { display: inline-block; flex: none; width: 1em; height: 1em; vertical-align: -.15em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton { background: var(--color-stone); border-radius: 4px; animation: pulse 1.2s ease-in-out infinite alternate; }
+.date-tile.skeleton { height: 46px; border-right: 0; }
+.skeleton.line { display: block; height: 12px; width: 40%; }
+.skeleton.line.long { width: 85%; margin-top: 8px; }
+@keyframes pulse { to { opacity: .4; } }
+/* Slower, not stopped: a frozen spinner reads as a hang. */
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } .skeleton { animation: none; } }
 .route-marks { gap: 3px; margin-left: auto; }
 .post-body { padding: 5px 0 19px; max-width: 80ch; }
 .post-body > * + *, .post-body form .actions { margin-top: 15px; }
@@ -257,7 +266,10 @@ details .field { margin-top: 15px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* Editorial notes */
 .desk > .editorial, .shell .editorial { margin-top: var(--section-gap); }
-.note-list { display: grid; gap: 0; padding: 0; margin: 19px 0 0; list-style: none; }
+.note-list, .event-list { display: grid; gap: 0; padding: 0; margin: 19px 0 0; list-style: none; }
+.event-list { margin: 0; }
+.event-row > .secondary { margin-left: auto; flex: none; }
+.event-row > .post-summary { flex: 1; }
 .note { display: grid; gap: 5px; padding: 15px 0; border-top: 1px solid var(--color-ash); }
 .note > .text-button { justify-self: start; min-height: 32px; }
 .note-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; text-transform: uppercase; }
@@ -347,7 +359,18 @@ details .field { margin-top: 15px; }
 .auth-panel .field > label { font-size: 11px; font-weight: 700; line-height: 1.4; letter-spacing: .05em; text-transform: uppercase; }
 .auth-submit { width: 100%; justify-content: center; }
 .auth-switch { text-align: center; }
-.auth-switch a { text-decoration: underline; text-underline-offset: 4px; }
+.auth-switch a, .auth-legal a, .legal a { text-decoration: underline; text-underline-offset: 4px; }
+.auth-legal { font-size: 13px; text-align: center; }
+.footer-legal { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.legal { flex: 1; padding-block: 19px var(--section-gap); }
+.legal article { max-width: 70ch; }
+.legal h1 { font-size: clamp(34px, 5vw, 56px); margin-bottom: 12px; }
+.legal h2 { font-size: 24px; margin: 40px 0 12px; }
+.legal p, .legal li { line-height: 1.6; }
+.legal p + p, .legal ul, .legal ol { margin-top: 12px; }
+.legal li + li { margin-top: 6px; }
+.legal-note { margin-bottom: 19px; }
+.legal .back { margin-top: 40px; }
 .password-field { position: relative; }
 .password-field input { padding-right: 52px; }
 /* The eye button sits inside the field, keeping a 44px target. */

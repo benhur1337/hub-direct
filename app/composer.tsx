@@ -23,6 +23,7 @@ import {
   uploadMedia,
   UploadStatus,
   useErrorText,
+  Spinner,
 } from "./ui";
 
 type Draft = {
@@ -357,7 +358,7 @@ export function Composer({
                   })
                 }
               >
-                <Icon name="spark" size={15} />
+                {busy === t("generatingAll") ? <Spinner /> : <Icon name="spark" size={15} />}
                 {busy === t("generatingAll") ? t("generatingAll") : t("generateAll")}
               </button>
             )}
@@ -391,7 +392,7 @@ export function Composer({
                         })
                       }
                     >
-                      <Icon name="spark" size={15} />
+                      {busy === t("generatingFor", { platform: p }) ? <Spinner /> : <Icon name="spark" size={15} />}
                       {busy === t("generatingFor", { platform: p })
                         ? t("generating")
                         : draft.captions[p]
@@ -473,6 +474,7 @@ export function Composer({
               </button>
             )}
             <button className="primary" disabled={!!busy}>
+              {busy && <Spinner />}
               {busy || (review ? t("confirm") : t("review"))}
               <Icon name={review ? "calendar" : "arrow"} />
             </button>

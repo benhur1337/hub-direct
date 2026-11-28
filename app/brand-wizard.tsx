@@ -13,7 +13,7 @@ import {
   type BrandProfile,
 } from "@/lib/brand-profile";
 import { brandAssetTypes, photoLimit, videoLimit, type Project } from "@/lib/model";
-import { api, Icon, uploadMedia, useErrorText } from "./ui";
+import { api, Icon, uploadMedia, useErrorText, Spinner } from "./ui";
 import { BrandInput, useBrandText } from "./brand-input";
 import "./brand-wizard.css";
 
@@ -261,7 +261,7 @@ export function BrandWizard({
           </p>
         )}
         {status && <p role="status">{status}</p>}
-        {busy && <p role="status">{busy}</p>}
+        {busy && <p role="status"><Spinner /> {busy}</p>}
         {editing && (
           <div className="brand-actions">
             <button

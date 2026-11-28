@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { brandContext, initialProfile, normalizeProfile } from "../lib/brand-profile";
 import { captionRequest } from "../lib/captions";
+import { readEvents } from "../lib/calendar";
 import type { Project } from "../lib/model";
 import { createTranslator } from "next-intl";
 import { problemText, type Problem, type Translate } from "../lib/problem";
@@ -104,4 +105,10 @@ assert.equal(
 assert.deepEqual(otherPlatform.content.slice(0, 2), withNotes.content.slice(0, 2));
 assert.equal(otherPlatform.content[2].cache_control, undefined);
 assert.notDeepEqual(otherPlatform.content[2], withNotes.content[2]);
-console.log("Brand validation, platform context and caption cache layout checks passed.");
+// Calendar replies: out-of-range, malformed and nameless dates are dropped; the rest sorted.
+const ev = (date: string, name = "Day") => ({ date, name, why: "Fits.", idea: "Post.", fixed: true });
+assert.deepEqual(
+  readEvents(JSON.stringify({ events: [ev("2026-12-25"), ev("2026-12-01"), ev("2026-11-27"), ev("2027-01-23"), ev("12/31"), ev("2026-12-02", " ")] }), "2026-11-28").map((e) => e.date),
+  ["2026-12-01", "2026-12-25"],
+);
+console.log("Brand validation, platform context, caption cache layout and calendar checks passed.");

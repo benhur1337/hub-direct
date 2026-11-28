@@ -13,6 +13,7 @@ import {
   prettyTime,
   SiteFooter,
   useErrorText,
+  Spinner,
 } from "./ui";
 import { LanguageSwitch } from "./language-switch";
 import { BrandWizard } from "./brand-wizard";
@@ -21,6 +22,7 @@ import { Schedule } from "./schedule";
 import { Library } from "./library";
 import { EditorialNotes } from "./editorial";
 import { Planner } from "./planner";
+import { BrandCalendar, type Seed } from "./brand-calendar";
 
 type View =
   | "overview"
@@ -28,6 +30,7 @@ type View =
   | "schedule"
   | "compose"
   | "plan"
+  | "calendar"
   | "library"
   | "voice"
   | "channels";
@@ -35,6 +38,7 @@ const tabs = [
   ["schedule", "calendar"],
   ["compose", "compose"],
   ["plan", "week"],
+  ["calendar", "dates"],
   ["library", "upload"],
   ["voice", "voice"],
   ["channels", "link"],
@@ -84,6 +88,7 @@ export function Desk({
       : "",
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [seed, setSeed] = useState<Seed>();
   const version = useRef(0);
   const current = projects.find((p) => p.id === id);
   function go(next: View, projectId = id) {
@@ -92,6 +97,7 @@ export function Desk({
     setId(projectId);
     setError("");
     setConfirmDelete(false);
+    setSeed(undefined);
     window.scrollTo({ top: 0 });
   }
   function update(next: Project) {
@@ -307,6 +313,7 @@ export function Desk({
                   </Field>
                 </div>
                 <button className="primary" disabled={busy}>
+                  {busy && <Spinner />}
                   {busy ? t("creating") : t("createButton")}
                   <Icon name="arrow" />
                 </button>
@@ -372,6 +379,7 @@ export function Desk({
                         })
                       }
                     >
+                      {busy && <Spinner />}
                       {busy ? t("deleting") : t("deletePermanently")}
                     </button>
                     <button
@@ -479,7 +487,17 @@ export function Desk({
                 </>
               )}
               {view === "plan" && (
-                <Planner key={id} project={current} update={update} navigate={go} />
+                <Planner key={id} project={current} update={update} navigate={go} seed={seed} />
+              )}
+              {view === "calendar" && (
+                <BrandCalendar
+                  key={id}
+                  project={current}
+                  plan={(next) => {
+                    go("plan");
+                    setSeed(next);
+                  }}
+                />
               )}
               {view === "compose" && (
                 <Composer

@@ -25,7 +25,7 @@ function back(project: string, result: "linked" | "denied" | "pages" | "failed" 
   // An HTML hop instead of a redirect: a redirect chain that started on facebook.com counts as
   // cross-site, so the browser would drop the SameSite=Strict session cookie and show the landing page.
   const reply = new NextResponse(
-    `<!doctype html><meta http-equiv="refresh" content="0;url=${target}"><a href="${target}">Continue to Hub Connect</a>`,
+    `<!doctype html><meta http-equiv="refresh" content="0;url=${target}"><a href="${target}">Continue to Hub Direct</a>`,
     { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
   );
   reply.cookies.delete({ name: stateCookie, path: "/api/meta" });

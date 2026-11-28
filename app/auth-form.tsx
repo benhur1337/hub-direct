@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { getPathname, Link } from "@/i18n/navigation";
-import { api, Brand, Icon, useErrorText } from "./ui";
+import { api, Brand, Icon, useErrorText, Spinner } from "./ui";
 import { LanguageSwitch } from "./language-switch";
 
 type Mode = "signin" | "signup";
@@ -104,8 +104,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
           )}
           <button className="primary auth-submit" disabled={busy}>
             {busy ? (signUp ? t("creating") : t("signingIn")) : signUp ? t("createAccount") : t("signIn")}
-            <Icon name="arrow" />
+            {busy ? <Spinner /> : <Icon name="arrow" />}
           </button>
+          {signUp && (
+            <p className="auth-legal">
+              {t.rich("agree", {
+                terms: (text) => <Link href="/terms">{text}</Link>,
+                privacy: (text) => <Link href="/privacy">{text}</Link>,
+              })}
+            </p>
+          )}
           <p className="auth-switch">
             {signUp ? t("haveAccount") : t("noAccount")}{" "}
             <Link href={signUp ? "/login" : "/signup"}>{signUp ? t("toSignIn") : t("toSignUp")}</Link>
