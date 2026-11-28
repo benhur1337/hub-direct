@@ -12,6 +12,7 @@ import {
   PlatformMark,
   prettyTime,
   useErrorText,
+  Spinner,
 } from "./ui";
 import { PostNotes } from "./editorial";
 
@@ -189,6 +190,7 @@ function PostRow({
               )}
               <div className="actions">
                 <button className="primary" disabled={busy}>
+                  {busy && <Spinner />}
                   {busy ? t("saving") : edit === "cancel" ? t("confirmCancel") : t("saveTime")}
                 </button>
                 <button

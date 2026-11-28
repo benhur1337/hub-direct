@@ -1,6 +1,6 @@
-# Hub Connect
+# Hub Direct
 
-Hub Connect helps you plan social posts for each brand. Create an account, start a project, and choose its channels. Compose a post, review each caption, and confirm the scheduled time.
+Hub Direct helps you plan social posts for each brand. Create an account, start a project, and choose its channels. Compose a post, review each caption, and confirm the scheduled time.
 
 ## Run locally
 
@@ -17,7 +17,7 @@ npm run db:migrate
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Set a session signing secret in `.env.local`, then open [Hub Connect](http://localhost:3000) (it redirects to `/en` or `/th`) and choose **Create account**. Signing in and signing up have their own pages, `/en/login` and `/en/signup` (or `/th/...`); the eye button in the password field shows or hides what you typed. Opening either page while signed in goes to the workspace.
+Set a session signing secret in `.env.local`, then open [Hub Direct](http://localhost:3000) (it redirects to `/en` or `/th`) and choose **Create account**. Signing in and signing up have their own pages, `/en/login` and `/en/signup` (or `/th/...`); the eye button in the password field shows or hides what you typed. Opening either page while signed in goes to the workspace.
 
 ```dotenv
 AUTH_SECRET=at-least-32-random-characters
@@ -27,7 +27,7 @@ Accounts live in Neon with scrypt-hashed passwords. Each account sees only its o
 
 ## Languages
 
-Hub Connect is available in English (`/en`) and Thai (`/th`), built with [next-intl](https://next-intl.dev). The **EN / ไทย** switch in the header changes language and keeps the open project and tab; the choice is saved in the `NEXT_LOCALE` cookie. Visiting `/` (including Meta's return link) redirects to the saved language, otherwise the browser's language, otherwise English.
+Hub Direct is available in English (`/en`) and Thai (`/th`), built with [next-intl](https://next-intl.dev). The **EN / ไทย** switch in the header changes language and keeps the open project and tab; the choice is saved in the `NEXT_LOCALE` cookie. Visiting `/` (including Meta's return link) redirects to the saved language, otherwise the browser's language, otherwise English.
 
 - Text lives in `messages/en.json` and `messages/th.json`, with the same keys. `node scripts/check-messages.mjs` checks that every message exists in both, with the same placeholders, and parses. Message keys are type-checked against `messages/en.json`.
 - Errors from `/api/workspace` are keyed (`lib/problem.ts`) and written in the language of the page that called (the browser sends `X-Locale`). Publishing errors saved on posts carry a code, so the schedule shows them in the reader's language.
@@ -84,7 +84,7 @@ The composer supports JPEG, PNG, and WebP photos up to 8 MiB each, or one MP4 or
 
 1. Create a Business app at [Meta for Developers](https://developers.facebook.com/apps). Add **Facebook Login for Business** and the **Instagram Graph API**. Set the valid OAuth redirect URI to `<APP_URL>/api/meta`.
 2. In Development mode, only the app's admins, developers and testers can connect. Other people need App Review for `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish` and `business_management`, plus Business Verification.
-3. The Instagram account must be a Business or Creator account linked to the Page. Instagram accepts JPEG photos (up to 10, which become a carousel) or one MP4 video (published as a Reel). Hub Connect checks this when you schedule.
+3. The Instagram account must be a Business or Creator account linked to the Page. Instagram accepts JPEG photos (up to 10, which become a carousel) or one MP4 video (published as a Reel). Hub Direct checks this when you schedule.
 4. Add these settings and restart:
 
 ```dotenv

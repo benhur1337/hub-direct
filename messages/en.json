@@ -1,16 +1,20 @@
 {
   "meta": {
-    "title": "Hub Connect — Publishing workspace",
-    "description": "Plan social posts, review captions, and manage each brand’s publishing schedule in Hub Connect."
+    "title": "Hub Direct — Publishing workspace",
+    "description": "Plan social posts, review captions, and manage each brand’s publishing schedule in Hub Direct."
   },
   "common": {
     "tagline": "One brief. Three channels.",
     "backToTop": "Back to top",
-    "language": "Language"
+    "language": "Language",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact support"
   },
   "workspace": {
     "opening": "Opening workspace…",
-    "home": "Hub Connect workspace",
+    "home": "Hub Direct workspace",
     "navigation": "Workspace navigation",
     "projects": "Projects",
     "newProject": "New project",
@@ -48,6 +52,7 @@
     "schedule": "Schedule",
     "compose": "Compose",
     "plan": "Plan week",
+    "calendar": "Brand calendar",
     "library": "Library",
     "voice": "Brand voice",
     "channels": "Channels"
@@ -60,7 +65,7 @@
     "expired": "That Facebook login couldn’t be matched to this browser. Start Connect again from this same web address, within 10 minutes."
   },
   "landing": {
-    "home": "Hub Connect home",
+    "home": "Hub Direct home",
     "navigation": "Homepage navigation",
     "signIn": "Sign in",
     "createAccount": "Create account",
@@ -143,7 +148,7 @@
       },
       "publish": {
         "question": "How do I publish a scheduled post?",
-        "answer": "Connect a Facebook Page, and its linked Instagram account, under Channels. Hub Connect then publishes to them at the scheduled time. TikTok posts stay in your schedule for you to share yourself."
+        "answer": "Connect a Facebook Page, and its linked Instagram account, under Channels. Hub Direct then publishes to them at the scheduled time. TikTok posts stay in your schedule for you to share yourself."
       },
       "write": {
         "question": "Can I write my own captions?",
@@ -151,7 +156,7 @@
       },
       "timezone": {
         "question": "Which time zone does the schedule use?",
-        "answer": "Hub Connect shows dates and times in your browser’s local time zone."
+        "answer": "Hub Direct shows dates and times in your browser’s local time zone."
       }
     },
     "scene": {
@@ -176,9 +181,9 @@
     }
   },
   "auth": {
-    "home": "Hub Connect home",
-    "metaSignIn": "Sign in — Hub Connect",
-    "metaSignUp": "Create account — Hub Connect",
+    "home": "Hub Direct home",
+    "metaSignIn": "Sign in — Hub Direct",
+    "metaSignUp": "Create account — Hub Direct",
     "signInTitle": "Sign in",
     "signInLead": "Welcome back. Sign in to open your workspace.",
     "signUpTitle": "Create your account",
@@ -193,7 +198,8 @@
     "signingIn": "Signing in…",
     "createAccount": "Create account",
     "creating": "Creating account…",
-    "noAccount": "New to Hub Connect?",
+    "agree": "By creating an account, you agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
+    "noAccount": "New to Hub Direct?",
     "toSignUp": "Create an account",
     "haveAccount": "Already have an account?",
     "toSignIn": "Sign in",
@@ -286,6 +292,24 @@
     "clear": "Your schedule is clear.",
     "clearHint": "Posts appear here once you confirm their captions and scheduled time.",
     "history": "History"
+  },
+  "legal": {
+    "home": "Hub Direct home",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "back": "Back to home",
+    "englishOnly": "This page is available in English only."
+  },
+  "calendar": {
+    "title": "Brand calendar",
+    "lead": "Holidays, seasons and industry days in the next 8 weeks that suit this brand's market and voice. Make a post from any date to queue it in the planner.",
+    "suggest": "Suggest dates",
+    "refresh": "Suggest again",
+    "finding": "Finding dates…",
+    "checkDate": "This date changes each year. Check it before scheduling.",
+    "makePost": "Make post",
+    "empty": "No dates yet",
+    "emptyHint": "Suggestions use the brand voice, so fill in the market and industry for better picks."
   },
   "planner": {
     "title": "Plan the week",
@@ -490,6 +514,7 @@
     "connectForCaptions": "Connect a channel before generating captions.",
     "anthropicKey": "Set ANTHROPIC_API_KEY in .env.local and restart, or enter your caption below.",
     "captionUnavailable": "Caption generation is unavailable. Retry or edit the caption manually.",
+    "calendarUnavailable": "Date suggestions are unavailable. Check ANTHROPIC_API_KEY and retry.",
     "wrongOrigin": "Open the workspace at its own web address and try again.",
     "sendJson": "Send a JSON request.",
     "unreadable": "The request could not be read. Try again.",

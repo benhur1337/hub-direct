@@ -31,6 +31,7 @@ import { getTranslations } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { problemText, type Translate } from "@/lib/problem";
 import { captionRequest } from "@/lib/captions";
+import { calendarRequest, readEvents, type CalendarEvent } from "@/lib/calendar";
 import { shareTarget } from "@/lib/publish";
 import { newSession, sessionAge, sessionCookie, sessionUser, signIn, signUp } from "@/lib/auth";
 
@@ -259,6 +260,26 @@ async function writeCaption(project: Project, platform: Platform, brief: string,
   check(caption && caption.length <= 6000, "captionUnavailable", 503);
   return caption;
 }
+async function calendar(user: string, body: Record<string, unknown>, locale: string | null) {
+  const project = await projectById(user, String(body.project));
+  // The browser's own date, so "today" matches the reader's time zone; at most a day off the server's.
+  const from = String(body.from);
+  check(/^\d{4}-\d{2}-\d{2}$/.test(from) && Math.abs(Date.parse(from) - Date.now()) < 2 * 86400000, "calendarUnavailable");
+  check(process.env.ANTHROPIC_API_KEY?.trim(), "calendarUnavailable", 503);
+  let events: CalendarEvent[] | undefined;
+  try {
+    const response = await new Anthropic({ timeout: 60000 }).beta.messages.create(
+      calendarRequest(project, from, locale === "th" ? "Thai" : "English"),
+    );
+    console.log("Calendar usage", response.usage);
+    if (response.stop_reason === "end_turn")
+      events = readEvents(response.content.map((block) => (block.type === "text" ? block.text : "")).join(""), from);
+  } catch (error) {
+    console.error("Calendar generation failed", error instanceof Error ? error.name : "Unknown error");
+  }
+  check(events, "calendarUnavailable", 503);
+  return NextResponse.json({ events });
+}
 export async function POST(req: NextRequest) {
   try {
     const origin = req.headers.get("origin");
@@ -304,6 +325,7 @@ export async function POST(req: NextRequest) {
     const user = requireUser(req);
     if (body.action === "generate") return await generate(user, body);
     if (body.action === "describe") return await describe(user, body);
+    if (body.action === "calendar") return await calendar(user, body, req.headers.get("x-locale"));
     if (body.action === "upload") return await upload(user, body);
     if (body.action === "attach") return await attach(user, body);
     if (body.action === "delete") {

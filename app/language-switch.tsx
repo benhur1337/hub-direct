@@ -12,7 +12,7 @@ const fullNames = { en: "English", th: "ภาษาไทย" } as const;
  * Switches between English (/en) and Thai (/th) on the same page. The choice is saved in the
  * NEXT_LOCALE cookie, so later visits open in the same language. `query` reopens the same screen.
  */
-export function LanguageSwitch({ query, pathname = "/" }: { query?: Record<string, string>; pathname?: "/" | "/login" | "/signup" }) {
+export function LanguageSwitch({ query, pathname = "/" }: { query?: Record<string, string>; pathname?: "/" | "/login" | "/signup" | "/privacy" | "/terms" }) {
   const t = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();

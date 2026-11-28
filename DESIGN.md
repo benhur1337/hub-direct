@@ -1,4 +1,4 @@
-﻿# Hub Connect · OFF+BRAND. style reference
+﻿# Hub Direct · OFF+BRAND. style reference
 
 ## Visual identity
 
@@ -15,7 +15,7 @@ The light interface uses near-black type on warm parchment. A single CSS sphere 
 
 ## Typography
 
-The live OFF+BRAND site uses Ataero Retina OB Edition. Hub Connect uses that family when installed locally and bundles Manrope under the SIL Open Font License as its geometric substitute. An exact match across devices requires the licensed Ataero webfont.
+The live OFF+BRAND site uses Ataero Retina OB Edition. Hub Direct uses that family when installed locally and bundles Manrope under the SIL Open Font License as its geometric substitute. An exact match across devices requires the licensed Ataero webfont.
 
 Thai text uses Noto Sans Thai (bundled, SIL Open Font License), loaded only for Thai characters so Latin text keeps Manrope. Thai has no capitals and stacks tone marks above and vowels below, so under `:lang(th)` display type opens to a 1.12–1.25 line height, body to 1.6, and tracking returns to zero.
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { videoLimit, type Asset, type Platform } from "@/lib/model";
 import { Problem, problemText, type Translate } from "@/lib/problem";
 
@@ -23,6 +24,7 @@ const paths = {
   trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
   spark: "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z",
   week: "M3 4h18v16H3ZM3 9h18M9 9v11m6-11v11",
+  dates: "M3 8h18M7 2v4m10-4v4M5 4h14q2 0 2 2v13q0 2-2 2H5q-2 0-2-2V6q0-2 2-2Zm6 10h2v2h-2Z",
   note: "M5 3h10l4 4v14H5ZM14 3v5h5M8 13h8M8 17h5",
   eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
   eyeOff: "m3 3 18 18M10.6 5.1Q11.3 5 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7q2.8 0 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2",
@@ -51,6 +53,11 @@ export function Icon({
   );
 }
 // One brief (centre) reaching three channels (nodes on the ring).
+export const supportEmail = "dan@hub-direct.com";
+/** Shown beside a busy label; the label itself carries the meaning. */
+export function Spinner() {
+  return <span className="spinner" aria-hidden="true" />;
+}
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
@@ -66,7 +73,7 @@ export function Brand() {
   return (
     <span className="brand">
       <Logo />
-      <span>Hub Connect</span>
+      <span>Hub Direct</span>
     </span>
   );
 }
@@ -77,6 +84,11 @@ export function SiteFooter({ children }: { children: ReactNode }) {
       <div className="footer-signature">
         <Brand />
         <p>{t("tagline")}</p>
+        <nav className="footer-legal" aria-label={t("legal")}>
+          <Link href="/privacy">{t("privacy")}</Link>
+          <Link href="/terms">{t("terms")}</Link>
+          <a href={"mailto:" + supportEmail}>{t("contact")}</a>
+        </nav>
       </div>
       <div className="footer-links">
         <nav aria-label="Footer navigation">{children}</nav>
@@ -204,7 +216,8 @@ export function forPosting(files: File[], onConvert: (percent: number) => void) 
 /** Upload box label and bar while media converts or uploads. */
 export function UploadStatus({ busy, percent, idle }: { busy: string; percent: number | null; idle: string }) {
   const t = useTranslations("upload");
-  if (percent === null) return <span>{busy === t("uploading") ? busy : idle}</span>;
+  if (percent === null)
+    return busy === t("uploading") ? <span><Spinner /> {busy}</span> : <span>{idle}</span>;
   return (
     <>
       <span>

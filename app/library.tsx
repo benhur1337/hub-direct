@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Problem } from "@/lib/problem";
 import { allowedTypes, type Asset, type Platform, type Project } from "@/lib/model";
-import { api, Field, Icon, localInput, Media, mediaAccept, PlatformMark, uploadBatch, UploadStatus, useBatchLabel, useErrorText } from "./ui";
+import { api, Field, Icon, localInput, Media, mediaAccept, PlatformMark, uploadBatch, UploadStatus, useBatchLabel, useErrorText, Spinner } from "./ui";
 
 /** Files in one batch; they upload ten at a time. */
 const batchLimit = 50;
@@ -162,7 +162,7 @@ export function Library({
                           })
                         }
                       >
-                        <Icon name="spark" size={15} />
+                        {busy === label ? <Spinner /> : <Icon name="spark" size={15} />}
                         {busy === label ? t("generating") : a.captions ? t("regenerate") : t("generate")}
                       </button>
                       <button type="button" className="primary" disabled={!!busy} onClick={() => startPost(a)}>

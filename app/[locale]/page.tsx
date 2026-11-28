@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { workspace } from "@/lib/store";
 import { sessionCookie, sessionUser } from "@/lib/auth";
 import { Desk } from "../workspace";
-import { Brand } from "../ui";
+import { Brand, Spinner } from "../ui";
 
 async function LocalWorkspace({ searchParams }: { searchParams: PageProps<"/[locale]">["searchParams"] }) {
   const { project, meta, view } = await searchParams;
@@ -30,7 +30,7 @@ export default async function Home({ searchParams }: PageProps<"/[locale]">) {
       fallback={
         <main className="loading">
           <Brand />
-          <p>{t("opening")}</p>
+          <p><Spinner /> {t("opening")}</p>
         </main>
       }
     >
