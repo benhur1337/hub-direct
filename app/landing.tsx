@@ -4,6 +4,7 @@ import { animate, inView, scroll, stagger } from "motion";
 import { useAnimate } from "motion/react";
 import { platforms } from "@/lib/model";
 import { Brand, Icon, PlatformMark, SiteFooter } from "./ui";
+import { ThemeToggle } from "./theme-toggle";
 import "./landing.css";
 
 const chapters = [
@@ -297,7 +298,10 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
           <nav aria-label="Homepage navigation">
             {sectionLinks.map(([href, label]) => <a href={href} key={href}>{label}</a>)}
           </nav>
-          <a className="mast-action" href="#email">Sign in <Icon name="arrow" size={16} /></a>
+          <div className="mast-end">
+            <ThemeToggle />
+            <a className="mast-action" href="#email">Sign in <Icon name="arrow" size={16} /></a>
+          </div>
         </div>
       </header>
       <main>

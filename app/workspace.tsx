@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion, MotionConfig } from "motion/react";
 import { Landing } from "./landing";
+import { ThemeToggle } from "./theme-toggle";
 import { platforms, type Project } from "@/lib/model";
 import {
   api,
@@ -175,14 +176,17 @@ export function Desk({
             <button onClick={() => go("overview")} aria-current={view === "overview" ? "page" : undefined}>Projects</button>
             <button onClick={() => go("create")} aria-current={view === "create" ? "page" : undefined}>New project</button>
           </nav>
-          <button
-            className="mast-action"
-            disabled={busy}
-            onClick={() => session({ action: "signout" })}
-            aria-label="Sign out"
-          >
-            Sign out <Icon name="exit" size={16} />
-          </button>
+          <div className="mast-end">
+            <ThemeToggle />
+            <button
+              className="mast-action"
+              disabled={busy}
+              onClick={() => session({ action: "signout" })}
+              aria-label="Sign out"
+            >
+              Sign out <Icon name="exit" size={16} />
+            </button>
+          </div>
         </div>
       </header>
       <main className="desk wide" data-view={view} key={id}>
