@@ -62,9 +62,6 @@
   "landing": {
     "home": "Hub Connect home",
     "navigation": "Homepage navigation",
-    "email": "Email",
-    "password": "Password",
-    "opening": "Opening workspace…",
     "signIn": "Sign in",
     "createAccount": "Create account",
     "hero": "Social<br></br>publishing<br></br>workspace.",
@@ -177,6 +174,30 @@
       "wordsWeUse": "Words we use",
       "words": "Form · Texture · Color"
     }
+  },
+  "auth": {
+    "home": "Hub Connect home",
+    "metaSignIn": "Sign in — Hub Connect",
+    "metaSignUp": "Create account — Hub Connect",
+    "signInTitle": "Sign in",
+    "signInLead": "Welcome back. Sign in to open your workspace.",
+    "signUpTitle": "Create your account",
+    "signUpLead": "Plan, write and schedule posts for every brand in one place.",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordHint": "Use 8 to 128 characters.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "createAccount": "Create account",
+    "creating": "Creating account…",
+    "noAccount": "New to Hub Connect?",
+    "toSignUp": "Create an account",
+    "haveAccount": "Already have an account?",
+    "toSignIn": "Sign in",
+    "back": "Back to home"
   },
   "composer": {
     "title": "Compose a post",

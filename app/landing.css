@@ -49,8 +49,7 @@
 .sphere-orbit::after { inset: -26%; }
 .hero-foot { position: absolute; left: 5%; bottom: 30px; display: flex; align-items: flex-end; gap: clamp(30px, 7vw, 119px); }
 .hero-foot p { font-size: 15px; }
-.signin { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; max-width: 34rem; }
-.signin input { width: 13rem; padding: 9px 12px; border: 1px solid currentColor; background: transparent; min-width: 0; }
+.signin { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 19px; max-width: 34rem; }
 .scroll-cue { position: fixed; z-index: 1; right: 30px; bottom: 30px; padding: 5px; }
 .land-intro, .land-faq { display: grid; grid-template-columns: 1fr 1fr; column-gap: 19px; align-items: start; }
 .land-intro { padding-top: var(--section-gap); border-top: 1px solid var(--color-ash); }
@@ -101,7 +100,6 @@
 .landing details > p { padding: 0 0 19px; max-width: 60ch; }
 .land-faq h2 { font-size: clamp(34px, 4vw, 70px); }
 .landing .site-footer { margin-top: var(--section-gap); }
-.land-error { position: fixed; z-index: 3; bottom: 19px; left: var(--gutter); max-width: calc(100% - 2 * var(--gutter)); }
 @media (prefers-reduced-motion: no-preference) {
   .sphere::before { animation: pearl-turn 16s linear infinite; }
   @keyframes pearl-turn { to { transform: rotate(1turn); } }

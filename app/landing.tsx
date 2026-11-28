@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { platforms } from "@/lib/model";
 import { Brand, Icon, PlatformMark, SiteFooter } from "./ui";
 import { LanguageSwitch } from "./language-switch";
+import { Link } from "@/i18n/navigation";
 import "./landing.css";
 
 // Copy lives in the landing.* messages; these lists only fix the order and icons.
@@ -228,7 +229,7 @@ function HeroOrb() {
   );
 }
 
-export function Landing({ enter, busy, error }: { enter: (fields: Record<string, string>) => void; busy: boolean; error: string }) {
+export function Landing() {
   const t = useTranslations("landing");
   const topEdge = useRef<HTMLDivElement>(null);
   const cue = useRef<HTMLAnchorElement>(null);
@@ -251,20 +252,10 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
     }
   }, []);
   const signIn = (
-    <form
-      className="signin"
-      onSubmit={(e) => {
-        e.preventDefault();
-        enter(Object.fromEntries(new FormData(e.currentTarget, e.nativeEvent.submitter)) as Record<string, string>);
-      }}
-    >
-      <input id="email" name="email" type="email" autoComplete="email" required aria-label={t("email")} placeholder={t("email")} />
-      <input name="password" type="password" autoComplete="current-password" required minLength={8} maxLength={128} aria-label={t("password")} placeholder={t("password")} />
-      <button className="ghost" name="action" value="signin" disabled={busy}>
-        {busy ? t("opening") : t("signIn")} <Icon name="arrow" size={17} />
-      </button>
-      <button className="ghost" name="action" value="signup" disabled={busy}>{t("createAccount")}</button>
-    </form>
+    <div className="signin">
+      <Link className="primary" href="/signup">{t("createAccount")} <Icon name="arrow" size={17} /></Link>
+      <Link className="ghost" href="/login">{t("signIn")} <Icon name="arrow" size={17} /></Link>
+    </div>
   );
   return (
     <div className="landing" id="top">
@@ -277,7 +268,7 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
           </nav>
           <div className="mast-end">
             <LanguageSwitch />
-            <a className="mast-action" href="#email">{t("signIn")} <Icon name="arrow" size={16} /></a>
+            <Link className="mast-action" href="/login">{t("signIn")} <Icon name="arrow" size={16} /></Link>
           </div>
         </div>
       </header>
@@ -336,9 +327,9 @@ export function Landing({ enter, busy, error }: { enter: (fields: Record<string,
       <SiteFooter>
         <a href="#about">{t("workspace")}</a>
         {sectionLinks.map(([href, label]) => <a href={href} key={href}>{t(`links.${label}`)}</a>)}
-        <a href="#email">{t("signIn")} <Icon name="arrow" size={15} /></a>
+        <Link href="/signup">{t("createAccount")}</Link>
+        <Link href="/login">{t("signIn")} <Icon name="arrow" size={15} /></Link>
       </SiteFooter>
-      {error && <p className="land-error error" role="alert">{error}</p>}
     </div>
   );
 }

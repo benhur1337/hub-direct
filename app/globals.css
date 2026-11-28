@@ -337,3 +337,21 @@ details .field { margin-top: 15px; }
   .sign-out .mast-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .language-switch button { min-width: 40px; padding: 0 8px; }
 }
+/* Sign-in and sign-up pages */
+.auth-page { min-height: 100svh; display: flex; flex-direction: column; }
+.auth-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 19px; }
+.auth-main { flex: 1; display: grid; align-content: center; justify-items: center; gap: 19px; padding: 19px var(--gutter) var(--section-gap); }
+.auth-panel { width: min(100%, 440px); }
+.auth-panel h1 { font-size: clamp(34px, 4vw, 46px); }
+.auth-panel .lead { margin-top: 12px; font-size: 16px; }
+.auth-panel .field > label { font-size: 11px; font-weight: 700; line-height: 1.4; letter-spacing: .05em; text-transform: uppercase; }
+.auth-submit { width: 100%; justify-content: center; }
+.auth-switch { text-align: center; }
+.auth-switch a { text-decoration: underline; text-underline-offset: 4px; }
+.password-field { position: relative; }
+.password-field input { padding-right: 52px; }
+/* The eye button sits inside the field, keeping a 44px target. */
+.password-field .reveal { position: absolute; inset: 0 0 0 auto; width: 48px; display: grid; place-items: center; padding: 0; border-radius: 0 10px 10px 0; color: #4a4a48; }
+.password-field .reveal:hover { color: var(--color-ink); }
+.password-field .reveal:focus-visible { outline-offset: -3px; }
+:lang(th) .auth-panel .field > label { letter-spacing: 0; font-size: 12px; }

@@ -17,7 +17,7 @@ npm run db:migrate
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Set a session signing secret in `.env.local`, then open [Hub Connect](http://localhost:3000) (it redirects to `/en` or `/th`) and choose **Create account**.
+Set a session signing secret in `.env.local`, then open [Hub Connect](http://localhost:3000) (it redirects to `/en` or `/th`) and choose **Create account**. Signing in and signing up have their own pages, `/en/login` and `/en/signup` (or `/th/...`); the eye button in the password field shows or hides what you typed. Opening either page while signed in goes to the workspace.
 
 ```dotenv
 AUTH_SECRET=at-least-32-random-characters

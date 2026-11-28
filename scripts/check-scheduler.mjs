@@ -239,6 +239,15 @@ try {
   assert.equal(english.status, 200);
   assert.match(await english.text(), /<html lang="en"/);
   assert.equal((await fetch(new URL("/th/nowhere", url))).status, 404);
+  // Dedicated sign-in and sign-up pages, with a show-password button.
+  const loginHtml = await (await fetch(new URL("/en/login", url))).text();
+  assert.match(loginHtml, /type="password"/);
+  assert.match(loginHtml, /autoComplete="current-password"|autocomplete="current-password"/);
+  assert.match(loginHtml, /aria-label="Show password"/);
+  const signupHtml = await (await fetch(new URL("/th/signup", url))).text();
+  assert.match(signupHtml, /สร้างบัญชีของคุณ/);
+  assert.match(signupHtml, /autocomplete="new-password"/i);
+  assert.match(signupHtml, /aria-label="แสดงรหัสผ่าน"/);
   const thaiError = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", "x-locale": "th" },
@@ -253,7 +262,11 @@ try {
   await request({ action: "signin", email: owner.email, password: "wrong password" }, 401);
   cookie = "hub-session=" + randomUUID() + ".9999999999999.forged";
   await request({ action: "create" }, 401);
+  // A forged session still sees the sign-in form.
+  assert.doesNotMatch(await (await fetch(new URL("/en/login", url), { headers: { cookie } })).text(), /NEXT_REDIRECT/);
   await request({ action: "signin", ...owner });
+  // Signed in, the sign-in page sends you on to the workspace.
+  assert.match(await (await fetch(new URL("/en/login", url), { headers: { cookie } })).text(), /NEXT_REDIRECT;replace;\/en;/);
   const create = (name, tone) =>
     request({
       action: "create",
