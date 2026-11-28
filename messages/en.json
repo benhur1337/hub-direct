@@ -379,7 +379,9 @@
     "generating": "Generating…",
     "regenerate": "Regenerate captions",
     "generate": "Generate captions",
-    "usePost": "Use in a post"
+    "usePost": "Use in a post",
+    "delete": "Delete",
+    "deleteConfirm": "Delete {name}? This cannot be undone."
   },
   "notes": {
     "title": "Editorial notes",
@@ -546,7 +548,8 @@
     "scheduledSome": "Scheduled {done, number} of {total, number} posts. The rest show what to fix.",
     "requestFailed": "The request failed. Try again.",
     "offline": "Could not reach the workspace. Check your connection and try again.",
-    "unknown": "Something went wrong. Try again."
+    "unknown": "Something went wrong. Try again.",
+    "mediaInUse": "This media is in a scheduled post or your brand profile. Remove it there first."
   },
   "labels": {
     "projectName": "a project name",
