@@ -226,6 +226,25 @@ export function describeAsset(
     asset.captions = captions;
   });
 }
+// Neon first, like deleteProject: a failed R2 cleanup only leaves an orphan.
+export async function deleteMedia(owner: string, id: string, assetId: unknown) {
+  await withProject(owner, id, async (project, tx) => {
+    const asset = project.assets.find((a) => a.id === assetId);
+    check(asset && allowedTypes.includes(asset.type), "mediaRemoved", 404);
+    check(
+      !project.posts.some((p) => p.media.includes(asset.id) && p.destinations.some((d) => d.status === "Scheduled")) &&
+        // Asset ids are UUIDs, so a text match finds any logo or brand-asset answer that points at it.
+        !JSON.stringify(project.brand ?? {}).includes(asset.id),
+      "mediaInUse",
+      409,
+    );
+    project.assets = project.assets.filter((a) => a !== asset);
+    await tx.delete(media).where(and(eq(media.projectId, id), eq(media.id, asset.id)));
+  });
+  await deleteFile(id, String(assetId)).catch(() =>
+    console.error(`Media deleted; R2 object projects/${id}/media/${assetId} needs manual cleanup.`),
+  );
+}
 function future(value: unknown) {
   check(
     typeof value === "string" &&

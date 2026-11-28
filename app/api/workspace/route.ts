@@ -6,6 +6,7 @@ import {
   assetData,
   check,
   createProject,
+  deleteMedia,
   deleteProject,
   describeAsset,
   field,
@@ -328,6 +329,10 @@ export async function POST(req: NextRequest) {
     if (body.action === "calendar") return await calendar(user, body, req.headers.get("x-locale"));
     if (body.action === "upload") return await upload(user, body);
     if (body.action === "attach") return await attach(user, body);
+    if (body.action === "deleteMedia") {
+      await deleteMedia(user, String(body.project), body.asset);
+      return NextResponse.json({ ok: true });
+    }
     if (body.action === "delete") {
       await deleteProject(user, body.project);
       return NextResponse.json({ ok: true });

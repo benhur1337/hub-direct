@@ -169,6 +169,21 @@ export function Library({
                         {t("usePost")}
                         <Icon name="arrow" />
                       </button>
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={!!busy}
+                        onClick={() =>
+                          confirm(t("deleteConfirm", { name: a.name })) &&
+                          void work("delete:" + a.id, async () => {
+                            await api({ action: "deleteMedia", project: project.id, asset: a.id });
+                            update({ ...project, assets: project.assets.filter((x) => x.id !== a.id) });
+                          })
+                        }
+                      >
+                        {busy === "delete:" + a.id ? <Spinner /> : <Icon name="trash" size={16} />}
+                        {t("delete")}
+                      </button>
                     </div>
                     {Object.entries(a.captions || {}).map(([p, caption]) => (
                       <div className="caption" key={p}>
